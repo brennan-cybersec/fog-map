@@ -21,11 +21,52 @@ imagery from Esri World Imagery, both keyless.
 
 | Command | What it does |
 | --- | --- |
-| `pnpm dev` | Run the app |
+| `pnpm dev` | Run the app in development |
+| `pnpm build` | Production build into `dist/` |
+| `pnpm serve` | Serve the production build on the local network |
 | `pnpm test` | Unit tests (83) |
 | `pnpm typecheck` | TypeScript, strict |
 | `pnpm verify` | Screenshot every major view, scrape the console for errors |
 | `pnpm perf` | Measure frame intervals and heap growth |
+
+The dev port is pinned to 5273 so the verification harness always knows where to
+look. If it reports the port is in use, a previous run is still alive:
+`lsof -ti :5273 | xargs kill`.
+
+## Testing real GPS on a phone
+
+Browsers only expose geolocation in a **secure context**. `localhost` qualifies,
+so tracking works on the development machine over plain HTTP — but a phone
+reaches the app by LAN IP, which does not, and GPS is unavailable there.
+
+Generating a local certificate turns on HTTPS and fixes that:
+
+```bash
+mkdir -p .certs
+LAN_IP=$(ipconfig getifaddr en0)   # macOS; use `hostname -I` on Linux
+openssl req -x509 -newkey rsa:2048 -nodes \
+  -keyout .certs/dev-key.pem -out .certs/dev-cert.pem -days 365 \
+  -subj "/CN=terra-incognita-local" \
+  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:${LAN_IP}"
+
+pnpm build && pnpm serve
+```
+
+Vite picks the certificate up automatically when `.certs/` exists, and serves
+`https://<your-lan-ip>:4173/`. The certificate is self-signed, so the phone warns
+once — accepting it is what makes the origin secure, which is the entire point.
+
+`.certs/` is git-ignored. Re-run the command if your LAN IP changes, since the
+address is baked into the certificate.
+
+To confirm an environment is actually GPS-capable:
+
+```bash
+node tests/verify/prodcheck.mjs https://<your-lan-ip>:4173/
+```
+
+It reports `secure context: true` when geolocation will work, and fails on any
+console error.
 
 `pnpm verify` writes to `artifacts/screenshots/` and exits non-zero on any
 console error, page exception or render failure. Individual views can be run by

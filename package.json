@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "verify": "node tests/verify/run.mjs",
     "lint": "tsc -b --noEmit",
-    "perf": "node tests/verify/perf.mjs"
+    "perf": "node tests/verify/perf.mjs",
+    "serve": "vite preview --port 4173 --host"
   },
   "dependencies": {
     "h3-js": "^4.5.0",

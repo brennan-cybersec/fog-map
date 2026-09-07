@@ -25,3 +25,6 @@ playwright-report/
 .env
 .env.*
 !.env.example
+
+## Local HTTPS certificates (machine-specific, never commit)
+.certs/
