@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import type { LngLat } from '../../src/core/types';
 import { generateDemoHistory } from '../../src/subsystems/demo-data';
-import { ROAD_TRIPS } from '../../src/subsystems/demo-data/geography';
+import {
+  COMMUTE_BACK,
+  COMMUTE_OUT,
+  ERRAND_ROUTES,
+  ROAD_TRIPS,
+  SF_WEEKEND_ROUTES,
+} from '../../src/subsystems/demo-data/geography';
 import { distanceMeters } from '../../src/subsystems/geospatial';
 
 /** Fixed end date so the generated world — and every screenshot — is stable. */
@@ -93,6 +100,36 @@ describe('demo history', () => {
           gap,
           `${template.key} waypoints ${i - 1}→${i} are ${(gap / 1000).toFixed(1)} km apart`,
         ).toBeLessThan(32_000);
+      }
+    }
+  });
+
+  it('routes short walks along streets rather than straight through blocks', () => {
+    // A two-point walk interpolates a straight line, which at street zoom cuts
+    // visibly through buildings. Capping the gap forces a real street path.
+    for (const [name, path] of Object.entries(ERRAND_ROUTES)) {
+      expect(path.length, `${name} needs intermediate waypoints`).toBeGreaterThan(2);
+      for (let i = 1; i < path.length; i++) {
+        const gap = distanceMeters(path[i - 1]!, path[i]!);
+        expect(gap, `${name} leg ${i} is ${Math.round(gap)} m of straight line`).toBeLessThan(700);
+      }
+    }
+  });
+
+  it('keeps every city route dense enough to follow real streets', () => {
+    // Long legs are interpolated as straight lines, and at street zoom — where
+    // the satellite reveal is sharpest — those cut visibly through blocks of
+    // buildings. This is the check that caught a 1.6 km diagonal to the Presidio.
+    const urban: ReadonlyArray<readonly [string, readonly LngLat[]]> = [
+      ['COMMUTE_OUT', COMMUTE_OUT] as const,
+      ['COMMUTE_BACK', COMMUTE_BACK] as const,
+      ...Object.entries(ERRAND_ROUTES).map(([k, v]) => [k, v] as const),
+      ...SF_WEEKEND_ROUTES.map((r) => [`${r.from}->${r.to}`, r.waypoints] as const),
+    ];
+    for (const [name, path] of urban) {
+      for (let i = 1; i < path.length; i++) {
+        const gap = distanceMeters(path[i - 1]!, path[i]!);
+        expect(gap, `${name} leg ${i} is ${Math.round(gap)} m of straight line`).toBeLessThan(460);
       }
     }
   });

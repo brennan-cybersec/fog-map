@@ -1,7 +1,7 @@
 {
   "product": "Terra Incognita",
-  "version": "0.6.0",
-  "lastVerifiedAt": "2026-09-07T13:52:00Z",
+  "version": "1.01.0",
+  "lastVerifiedAt": "2026-09-07T16:45:00Z",
   "verification": {
     "command": "pnpm verify",
     "renderer": "ANGLE SwiftShader (WebGL2, headless Chromium)",
@@ -13,13 +13,17 @@
       "san-francisco",
       "mission-street",
       "live-position",
+      "live-walk",
       "journeys",
       "statistics",
       "exploration",
       "search",
       "privacy",
       "deleted-empty-state",
-      "replay"
+      "replay",
+      "mobile-map",
+      "mobile-tracking",
+      "mobile-journeys"
     ],
     "result": "OK",
     "consoleErrors": 0,
@@ -27,8 +31,8 @@
   },
   "tests": {
     "command": "pnpm test",
-    "files": 8,
-    "passing": 83,
+    "files": 9,
+    "passing": 93,
     "failing": 0,
     "typecheck": "clean"
   },
@@ -60,7 +64,8 @@
       "p95FrameMs": 183.2,
       "caveat": "Absolute frame rates from this harness are a floor, not a prediction for real hardware. Useful for regression detection, not for asserting the 60 FPS budget."
     },
-    "heapGrowthAcrossTwoIdenticalPasses": "0.0 MB"
+    "heapGrowthAcrossTwoIdenticalPasses": "0.0 MB",
+    "liveWalkCoverageRevealed": "2,271,204 -> 2,813,962 px (verified end-to-end in a browser)"
   },
   "modules": {
     "map": {
@@ -75,7 +80,7 @@
     "fog-of-war": {
       "score": 8.5,
       "state": "passing",
-      "notes": "Two-pass WebGL mask: MAX-blended coverage buffer, destination-out composite. Minimum on-screen radius keeps corridors legible when zoomed out.",
+      "notes": "Two-pass WebGL mask: MAX-blended coverage buffer, destination-out composite. Minimum on-screen radius keeps corridors legible when zoomed out. Live fixes now reveal territory incrementally as they arrive.",
       "screenshots": [
         "artifacts/screenshots/mission-street.png"
       ]
@@ -127,7 +132,7 @@
     "gps": {
       "score": 8.0,
       "state": "passing",
-      "notes": "Real geolocation with battery profiles. Every documented fault surfaces distinctly; bad fixes are marked excluded, never deleted."
+      "notes": "Real geolocation with battery profiles. Every documented fault surfaces distinctly; bad fixes are marked excluded, never deleted. A walk reveals ground in real time and announces genuinely new cells; screen wake lock holds the display on mid-walk."
     },
     "permissions": {
       "score": 8.0,
@@ -151,7 +156,7 @@
     "ui": {
       "score": 8.0,
       "state": "passing",
-      "notes": "One design system across map HUD, four drawers, search and onboarding."
+      "notes": "One design system across map HUD, four drawers, search and onboarding. Phone layout reorganises to bottom sheets with thumb-reachable tracking control."
     },
     "onboarding": {
       "score": 8.0,
@@ -173,7 +178,7 @@
     "performance": {
       "score": 6.0,
       "state": "partial",
-      "notes": "Frame intervals and heap are now measured (pnpm perf). Memory stability is verified: zero heap growth across two identical interaction passes. The 60 FPS budget remains UNVERIFIED because this environment has no GPU."
+      "notes": "Frame intervals and heap are now measured (pnpm perf). Memory stability is verified: zero heap growth across two identical interaction passes. The 60 FPS budget remains UNVERIFIED because this environment has no GPU. Route rendering recedes at street zoom, which removed the dominant source of visual noise."
     },
     "places": {
       "score": 4.0,
@@ -183,6 +188,11 @@
     "notifications": {
       "score": 0,
       "state": "not-started"
+    },
+    "pwa": {
+      "score": 7.5,
+      "state": "passing",
+      "notes": "Installable: manifest, maskable icons, minimal network-first service worker. Map tiles are deliberately not cached \u2014 a walk would exhaust the storage quota."
     }
   },
   "openIssues": [
@@ -199,18 +209,6 @@
       "summary": "No IndexedDB persistence. Live-tracked fixes are not durable across a reload; only export is implemented."
     },
     {
-      "id": "OI-6",
-      "severity": "medium",
-      "area": "fog-of-war",
-      "summary": "No discovery animation. Newly revealed territory appears without the 'new territory discovered' moment the brief calls for."
-    },
-    {
-      "id": "OI-4",
-      "severity": "medium",
-      "area": "fog-of-war",
-      "summary": "The reveal is rebuilt wholesale; live tracking has no incremental update path."
-    },
-    {
       "id": "OI-7",
       "severity": "low",
       "area": "search",
@@ -221,6 +219,12 @@
       "severity": "low",
       "area": "map",
       "summary": "Revealed imagery reads dark where a narrow corridor crosses dense tree canopy at city zoom."
+    },
+    {
+      "id": "OI-8",
+      "severity": "low",
+      "area": "demo-data",
+      "summary": "Demo routes interpolate straight lines between hand-placed waypoints, so they do not follow street geometry exactly. Route lines now recede at street zoom where the reveal corridor is the accurate record."
     }
   ],
   "resolvedIssues": [
@@ -237,12 +241,17 @@
     "Demo routine generated in UTC put a San Francisco commute at 03:45 local.",
     "Local-time generation dated the tail of the history after its declared end.",
     "Place.visitCount was inflated relative to the visit records backing it.",
-    "Performance was entirely unmeasured; frame timing and heap instrumentation now exist and show no per-frame retention."
+    "Performance was entirely unmeasured; frame timing and heap instrumentation now exist and show no per-frame retention.",
+    "Live tracking drew a position marker but never revealed territory \u2014 new fixes did not reach the fog mask.",
+    "Survey ink was too pale to read; road hierarchy and water were indistinguishable at a glance.",
+    "Local errands and weekend routes cut straight diagonals through city blocks.",
+    "Route lines dominated street zoom as a starburst of overlapping strokes.",
+    "Vite flipped to HTTPS merely because .certs/ existed, silently breaking the verification harness."
   ],
   "nextUp": [
     "Confirm the 60 FPS budget on real GPU hardware.",
-    "IndexedDB persistence so live tracking survives a reload.",
-    "Discovery animation for newly revealed territory.",
+    "IndexedDB persistence so a live walk survives a reload.",
+    "Background tracking while the screen is off (needs a service-worker sync strategy).",
     "A places surface with favouriting."
   ]
 }

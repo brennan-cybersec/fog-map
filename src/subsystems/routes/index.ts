@@ -162,7 +162,7 @@ export function installRouteLayers(map: MapLibreMap, data: FeatureCollection<Lin
           16,
           ['+', 5, ['*', 10, ['get', 'weight']]],
         ],
-        'line-opacity': ['interpolate', ['linear'], ['zoom'], 4, 0.1, 11, 0.12, 16, 0.07],
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 4, 0.1, 11, 0.11, 14, 0.05, 16, 0],
         'line-blur': ['interpolate', ['linear'], ['zoom'], 4, 2, 12, 4, 16, 8],
       },
     },
@@ -191,9 +191,28 @@ export function installRouteLayers(map: MapLibreMap, data: FeatureCollection<Lin
           16,
           ['+', 1.32, ['*', 2.42, ['get', 'weight']]],
         ],
-        // Routes fade back at street zoom so the revealed satellite ground —
-        // not the line over it — is what the eye lands on.
-        'line-opacity': ['interpolate', ['linear'], ['zoom'], 4, 0.7, 11, 0.72, 15, 0.4, 17, 0.24],
+        /*
+         * Routes carry the story at regional zoom, where a reveal corridor is
+         * only a few pixels wide. By street zoom the corridor itself shows the
+         * path far more accurately than the line does, so the line recedes to
+         * a hint — it is redundant there, and drawing it boldly turns a
+         * detailed map into a starburst of overlapping strokes.
+         */
+        'line-opacity': [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          4,
+          0.7,
+          11,
+          0.7,
+          14,
+          0.32,
+          16,
+          0.12,
+          18,
+          0.06,
+        ],
       },
     },
     firstSymbol,

@@ -1107,6 +1107,175 @@
   color: var(--text-dim);
 }
 
+/* --- Live tracking ------------------------------------------------------- */
+
+/*
+ * Bottom-centre and thumb-reachable. This is the control the whole demo hangs
+ * on, so it is the only accent-filled element on screen when tracking is off.
+ */
+.live {
+  grid-column: 1 / span 3;
+  grid-row: 2;
+  align-self: end;
+  justify-self: center;
+  z-index: 3;
+  padding-bottom: var(--s-2);
+}
+
+.live__start {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  /* Comfortably above the 44px minimum touch target. */
+  min-height: 48px;
+  padding: 0 var(--s-5);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: #16110b;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(232, 147, 74, 0.35), var(--shadow);
+  transition: transform 160ms var(--ease), background 160ms var(--ease);
+}
+
+.live__start:hover {
+  background: var(--accent-bright);
+}
+
+.live__start:active {
+  transform: scale(0.97);
+}
+
+.live__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #16110b;
+  flex: none;
+}
+
+.live__panel {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 48px;
+  padding: 0 var(--s-2) 0 var(--s-4);
+  border-radius: var(--r-pill);
+  background: var(--surface-strong);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow);
+}
+
+.live__pulse {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #4aa3e8;
+  flex: none;
+  animation: live-pulse 2s var(--ease) infinite;
+}
+
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(74, 163, 232, 0.5);
+  }
+  50% {
+    opacity: 0.75;
+    box-shadow: 0 0 0 7px rgba(74, 163, 232, 0);
+  }
+}
+
+.live__readout {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  font-size: 12.5px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.live__metric b {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.live__accuracy,
+.live__waiting {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.live__stop {
+  min-height: 36px;
+  padding: 0 var(--s-4);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  flex: none;
+}
+
+.live__stop:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* --- Discovery ----------------------------------------------------------- */
+
+.discovery {
+  grid-column: 1 / span 3;
+  grid-row: 2;
+  align-self: center;
+  justify-self: center;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--s-3) var(--s-5);
+  border: 1px solid rgba(232, 147, 74, 0.45);
+  border-radius: var(--r-lg);
+  background: rgba(24, 18, 12, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 0 40px rgba(232, 147, 74, 0.22), var(--shadow);
+  animation: discovery-in 420ms var(--ease-out);
+}
+
+@keyframes discovery-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+}
+
+.discovery__label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-bright);
+}
+
+.discovery__count {
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
 /* --- Footer -------------------------------------------------------------- */
 
 .footer {
@@ -1136,6 +1305,10 @@
   font-size: 11px;
   letter-spacing: 0.06em;
   color: var(--text-dim);
+}
+
+.badge__short {
+  display: none;
 }
 
 .badge__dot {
@@ -1365,27 +1538,174 @@
 
 /* --- Responsive ---------------------------------------------------------- */
 
+/*
+ * Phone layout.
+ *
+ * Reorganised rather than merely shrunk. On a phone the map is most of the
+ * value and the hand is at the bottom of the device, so: search pinned to the
+ * top, the tracking control within thumb reach at the bottom, and panels
+ * arriving as bottom sheets instead of side drawers — a 370px drawer would
+ * cover the entire map on a 390px screen.
+ *
+ * `env(safe-area-inset-*)` keeps everything clear of the notch and the Android
+ * gesture bar; `index.html` sets `viewport-fit=cover` so those values resolve.
+ */
 @media (max-width: 720px) {
   .hud {
-    padding: var(--s-3);
+    padding: calc(var(--s-3) + env(safe-area-inset-top)) var(--s-3)
+      calc(var(--s-3) + env(safe-area-inset-bottom));
+    gap: var(--s-2);
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .search {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+  }
+
+  /* Collapsed to a single line of the one number that matters; the full
+     breakdown is a tap away in Statistics. */
+  .summary {
+    grid-column: 1 / span 2;
+    grid-row: 3;
+    min-width: 0;
+    max-width: none;
+    padding: var(--s-2) var(--s-3);
+    display: flex;
+    align-items: center;
     gap: var(--s-3);
   }
 
-  .summary {
-    min-width: 0;
-    max-width: none;
-    grid-column: 1 / span 2;
-  }
-
-  .summary__value {
-    font-size: 32px;
-  }
-
-  .legend {
+  .summary__brand,
+  .summary__caption,
+  .summary__grid {
     display: none;
   }
 
+  .summary__hero {
+    gap: var(--s-1);
+  }
+
+  .summary__value {
+    font-size: 20px;
+  }
+
+  .summary__unit {
+    font-size: 12px;
+  }
+
+  .rail {
+    grid-column: 2;
+    grid-row: 1;
+    flex-direction: row;
+  }
+
+  .rail__btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .rail__sep {
+    width: 1px;
+    height: auto;
+    margin: var(--s-2) var(--s-1);
+  }
+
+  /* Panels become bottom sheets. */
+  .drawer {
+    grid-column: 1 / span 2;
+    grid-row: 1 / span 3;
+    justify-self: stretch;
+    align-self: end;
+    width: auto;
+    margin-right: 0;
+    max-height: 78vh;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    animation: sheet-in 280ms var(--ease-out);
+  }
+
+  .notice {
+    grid-column: 1 / span 2;
+    grid-row: 2;
+    align-self: end;
+    max-width: none;
+  }
+
+  .live {
+    grid-row: 2;
+    align-self: end;
+    padding-bottom: var(--s-3);
+  }
+
+  .live__panel,
+  .live__start {
+    min-height: 52px;
+  }
+
+  .replay {
+    grid-column: 1 / span 2;
+    grid-row: 3;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .legend,
   .attribution {
-    max-width: 180px;
+    display: none;
+  }
+
+  /* Summary and badge share the bottom row rather than stacking on top of
+     each other, which is what they did when both spanned the full width. */
+  .summary {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .footer {
+    grid-column: 2;
+    grid-row: 3;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .badge {
+    font-size: 10.5px;
+    padding: 6px var(--s-2);
+  }
+
+  .badge__long {
+    display: none;
+  }
+
+  .badge__short {
+    display: inline;
+  }
+
+  .onboard__card {
+    max-width: none;
+  }
+
+  .onboard__actions .btn {
+    min-height: 46px;
+    flex: 1;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+}
+
+/* Coarse pointers get larger hit areas regardless of viewport width. */
+@media (pointer: coarse) {
+  .tl__entry,
+  .search__item,
+  .scope__btn {
+    min-height: 44px;
   }
 }

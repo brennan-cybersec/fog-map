@@ -4,21 +4,26 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 
 /**
- * Optional local HTTPS.
+ * Opt-in local HTTPS.
  *
  * Browsers only expose geolocation in a secure context. `localhost` counts as
  * one, so plain HTTP is fine on this machine — but a phone on the LAN reaches
  * the app by IP, which does not, and GPS is silently unavailable there.
  *
- * Generating `.certs/` (see README) turns on HTTPS so real tracking can be
- * tested on a real device. The certificate is self-signed, so the phone will
- * warn once and needs to be told to proceed; that is expected, and accepting it
- * is what makes the origin secure.
+ * Enabled by `HTTPS=1` (what `pnpm serve` sets) rather than by the mere presence
+ * of `.certs/`. Flipping protocol as a side effect of a file existing surprised
+ * the verification harness into timing out against a scheme it was not
+ * expecting, and an explicit switch is easier to reason about than an implicit
+ * one.
  */
 function localHttps() {
+  if (process.env.HTTPS !== '1') return undefined;
   const key = fileURLToPath(new URL('./.certs/dev-key.pem', import.meta.url));
   const cert = fileURLToPath(new URL('./.certs/dev-cert.pem', import.meta.url));
-  if (!existsSync(key) || !existsSync(cert)) return undefined;
+  if (!existsSync(key) || !existsSync(cert)) {
+    console.warn('[terra] HTTPS=1 but .certs/ is missing — serving over HTTP.');
+    return undefined;
+  }
   return { key: readFileSync(key), cert: readFileSync(cert) };
 }
 

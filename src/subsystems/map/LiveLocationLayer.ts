@@ -121,6 +121,53 @@ export function setReplayTrail(map: MapLibreMap, trail: readonly LngLat[]): void
   });
 }
 
+export const LIVE_TRAIL_SOURCE = 'live-trail';
+
+/**
+ * The path walked during this tracking session.
+ *
+ * Blue, matching the position dot, rather than the amber used for history and
+ * replay — live movement is happening now and should not be mistaken for a
+ * record of something that already happened.
+ */
+export function installLiveTrailLayers(map: MapLibreMap): void {
+  if (map.getSource(LIVE_TRAIL_SOURCE)) return;
+  map.addSource(LIVE_TRAIL_SOURCE, { type: 'geojson', data: EMPTY });
+  map.addLayer({
+    id: 'live-trail-glow',
+    type: 'line',
+    source: LIVE_TRAIL_SOURCE,
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': '#7cc4f5', 'line-width': 11, 'line-opacity': 0.2, 'line-blur': 6 },
+  });
+  map.addLayer({
+    id: 'live-trail',
+    type: 'line',
+    source: LIVE_TRAIL_SOURCE,
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': '#4aa3e8', 'line-width': 3.2, 'line-opacity': 0.95 },
+  });
+}
+
+export function setLiveTrail(map: MapLibreMap, trail: readonly LngLat[]): void {
+  const source = map.getSource(LIVE_TRAIL_SOURCE) as GeoJSONSource | undefined;
+  if (!source) return;
+  if (trail.length < 2) {
+    source.setData(EMPTY);
+    return;
+  }
+  source.setData({
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: trail.map((c) => [c[0], c[1]]) },
+        properties: {},
+      },
+    ],
+  });
+}
+
 export function setLivePosition(map: MapLibreMap, fix: LocationFix | null): void {
   const accuracy = map.getSource(LIVE_ACCURACY_SOURCE) as GeoJSONSource | undefined;
   const point = map.getSource(LIVE_POINT_SOURCE) as GeoJSONSource | undefined;

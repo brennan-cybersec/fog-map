@@ -22,14 +22,24 @@
 import type { StyleSpecification } from 'maplibre-gl';
 import { GLYPHS, OPENMAPTILES_ATTRIBUTION, VECTOR_SOURCE_URL } from './sources';
 
-const PAPER = '#eceae5';
-const PAPER_SHADE = '#e3e0d9';
-const INK_FAINT = '#cbc7bd';
-const INK_LIGHT = '#b6b1a5';
-const INK_MID = '#8f8a7d';
-const INK_STRONG = '#6b6659';
-const WATER = '#dcdfe0';
-const WATER_INK = '#b3b9bb';
+/*
+ * Palette.
+ *
+ * The ink values are deliberately darker than a literal survey sheet. The first
+ * version was faithful to the reference and almost unreadable at a glance:
+ * unexplored territory has to show a legible road network, or "everywhere you
+ * have not been" degrades into undifferentiated texture. Contrast between the
+ * ink steps is what carries the road hierarchy, so they are spaced widely.
+ */
+const PAPER = '#f0eee9';
+const PAPER_SHADE = '#e2ded4';
+const INK_FAINT = '#bdb8aa';
+const INK_LIGHT = '#9d9686';
+const INK_MID = '#726b5c';
+const INK_STRONG = '#4e4839';
+/* Water carries the only real chroma, so it reads as water instantly. */
+const WATER = '#ccd7dd';
+const WATER_INK = '#93a6af';
 
 export function createFogStyle(): StyleSpecification {
   return {
@@ -118,6 +128,17 @@ export function createFogStyle(): StyleSpecification {
       // --- Buildings as outlines ----------------------------------------
       // The single strongest contributor to the "survey sheet" look.
       {
+        id: 'building-fill',
+        type: 'fill',
+        source: 'omt',
+        'source-layer': 'building',
+        minzoom: 14,
+        paint: {
+          'fill-color': PAPER_SHADE,
+          'fill-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.35, 17, 0.6],
+        },
+      },
+      {
         id: 'building-outline',
         type: 'line',
         source: 'omt',
@@ -167,7 +188,7 @@ export function createFogStyle(): StyleSpecification {
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
           'line-color': INK_LIGHT,
-          'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 9, 0.4, 14, 1.4, 20, 8],
+          'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 9, 0.6, 14, 1.9, 20, 9],
         },
       },
       {
@@ -180,7 +201,7 @@ export function createFogStyle(): StyleSpecification {
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
           'line-color': INK_MID,
-          'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 7, 0.5, 14, 2, 20, 11],
+          'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 7, 0.9, 14, 2.8, 20, 12],
           'line-opacity': 0.75,
         },
       },
@@ -194,7 +215,7 @@ export function createFogStyle(): StyleSpecification {
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
           'line-color': INK_MID,
-          'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 5, 0.6, 14, 2.6, 20, 14],
+          'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 5, 1.1, 14, 3.4, 20, 15],
           'line-opacity': 0.85,
         },
       },

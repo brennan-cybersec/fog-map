@@ -30,6 +30,11 @@ export interface VerificationApi {
    * manufacture something the product would treat as a real device reading.
    */
   simulatePosition: (coord: [number, number], accuracy?: number) => void;
+  /**
+   * Walk a path through the real live-tracking pipeline, revealing territory as
+   * it goes. Registered by the app; absent until the map is mounted.
+   */
+  simulateWalk?: (path: [number, number][], accuracy?: number) => void;
   /** Begin recording frame intervals for a performance assertion. */
   startFrameRecording: () => void;
   /** Stop recording and return real measured frame statistics. */
@@ -62,6 +67,13 @@ export function registerEngine(next: MapEngine): void {
 
 export function registerStats(stats: Record<string, unknown>): void {
   if (window.__terra) window.__terra.stats = stats;
+}
+
+/** Wired by the app so a simulated walk exercises the real tracking path. */
+export function registerWalkSimulator(
+  fn: (path: [number, number][], accuracy?: number) => void,
+): void {
+  if (window.__terra) window.__terra.simulateWalk = fn;
 }
 
 export function installVerificationApi(): void {

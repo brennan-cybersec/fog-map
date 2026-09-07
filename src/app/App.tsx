@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatArea, formatCount, formatDistance, formatPercent } from '../core/format';
 import type { LngLat, Segment, Trip } from '../core/types';
-import { registerEngine, registerStats } from '../devtools/verification';
+import { registerEngine, registerStats, registerWalkSimulator } from '../devtools/verification';
 import { generateDemoHistory } from '../subsystems/demo-data';
 import { buildExploration, EARTH_LAND_SQ_METERS } from '../subsystems/exploration';
 import { boundsOf } from '../subsystems/geospatial';
@@ -17,6 +17,7 @@ import { makeStamp, type MapEngine } from '../subsystems/map/MapEngine';
 import { buildSearchContext } from '../subsystems/search';
 import { boundsOfSegments } from '../subsystems/timeline';
 import { BrandMark, Icon, Panel, RailButton, Stat } from '../ui/primitives';
+import { DiscoveryToast, LiveBar } from './LiveBar';
 import { MapView } from './MapView';
 import { AchievementsPanel } from './panels/AchievementsPanel';
 import { JourneysPanel } from './panels/JourneysPanel';
@@ -57,6 +58,7 @@ export function App() {
   const [panel, setPanel] = useState<PanelId>(null);
   const [deleted, setDeleted] = useState(false);
   const [maskHome, setMaskHome] = useState(false);
+  const [following, setFollowing] = useState(true);
   // First run is shown once per browser. A returning user should land straight
   // on their map, not on an explainer they have already read.
   const [onboarded, setOnboarded] = useState(() => {
@@ -77,7 +79,7 @@ export function App() {
       /* persistence is a convenience here, never a requirement */
     }
   }, []);
-  const tracking = useTracking();
+  const tracking = useTracking(world.exploration.cells);
   const replay = useReplay();
   const fault = describeFault(tracking.status);
 
@@ -116,8 +118,41 @@ export function App() {
   }, [engine, tracking.fix]);
 
   useEffect(() => {
+    registerWalkSimulator((path, accuracy) => {
+      for (const coord of path) tracking.injectDemoFix(coord, accuracy);
+    });
+  }, [tracking]);
+
+  useEffect(() => {
     engine?.setReplayTrail(replay.frame?.trail ?? []);
   }, [engine, replay.frame]);
+
+  useEffect(() => {
+    engine?.setLiveTrail(tracking.session.trail);
+  }, [engine, tracking.session.trail]);
+
+  // Follow the walker while tracking. Panning the map by hand switches this off
+  // so the camera never fights the user for control; the locate button re-arms it.
+  useEffect(() => {
+    if (!engine) return;
+    const onDragStart = () => setFollowing(false);
+    engine.fog.on('dragstart', onDragStart);
+    return () => {
+      engine.fog.off('dragstart', onDragStart);
+    };
+  }, [engine]);
+
+  useEffect(() => {
+    const coord = tracking.fix?.coord;
+    if (!engine || !coord || !following || !tracking.status.enabled) return;
+    engine.fog.easeTo({
+      center: [coord[0], coord[1]],
+      // Zoom in on the first fix only; afterwards respect whatever the user set.
+      zoom: Math.max(engine.fog.getZoom(), 16),
+      duration: 900,
+      essential: true,
+    });
+  }, [engine, tracking.fix, tracking.status.enabled, following]);
 
   // Keep the replay marker in view without fighting the user for the camera:
   // the map only recentres when the traveller would otherwise leave the screen.
@@ -142,6 +177,7 @@ export function App() {
     // Follow the live position when there is one; otherwise return to the
     // centre of the recorded history rather than pretending to know where the
     // user is.
+    setFollowing(true);
     const target = tracking.fix?.coord ?? HOME;
     engine?.fog.flyTo({
       center: [target[0], target[1]],
@@ -240,6 +276,21 @@ export function App() {
     [engine],
   );
 
+  /**
+   * Historical mask plus anything revealed during this walk.
+   *
+   * Concatenated rather than merged into the stored exploration: live reveals
+   * are session state, and folding them into the historical model would blur
+   * the line between recorded history and the current walk.
+   */
+  const stamps = useMemo(
+    () =>
+      tracking.session.stamps.length === 0
+        ? view.stamps
+        : [...view.stamps, ...tracking.session.stamps],
+    [view.stamps, tracking.session.stamps],
+  );
+
   const exploredFraction = view.areaSqMeters / EARTH_LAND_SQ_METERS;
 
   return (
@@ -247,7 +298,7 @@ export function App() {
       <MapView
         center={[-122.4083, 37.775]}
         zoom={12.4}
-        stamps={view.stamps}
+        stamps={stamps}
         segments={view.history.segments}
         onReady={handleReady}
       />
@@ -414,6 +465,24 @@ export function App() {
           </Panel>
         )}
 
+        <LiveBar
+          status={tracking.status}
+          session={tracking.session}
+          accuracyMeters={tracking.fix?.accuracy ?? null}
+          onStart={() => {
+            setFollowing(true);
+            tracking.start();
+          }}
+          onStop={tracking.stop}
+        />
+
+        {tracking.discovery && (
+          <DiscoveryToast
+            total={tracking.discovery.sessionTotal}
+            onDismiss={tracking.acknowledgeDiscovery}
+          />
+        )}
+
         <div className="footer">
           <div className="legend">
             <span className="legend__item">
@@ -432,7 +501,10 @@ export function App() {
 
           <span className="badge">
             <span className="badge__dot" />
-            Demo world &mdash; synthetic history, not real movement
+            <span className="badge__long">
+              Demo world &mdash; synthetic history, not real movement
+            </span>
+            <span className="badge__short">Demo data</span>
           </span>
 
           <p className="attribution">
@@ -449,6 +521,7 @@ export function App() {
           onExploreDemo={dismissOnboarding}
           onStartTracking={() => {
             dismissOnboarding();
+            setFollowing(true);
             tracking.start();
           }}
         />

@@ -27,6 +27,7 @@ import { bearingDegrees, createRng, destination, distanceMeters, pathLengthMeter
 import {
   COMMUTE_BACK,
   COMMUTE_OUT,
+  ERRAND_ROUTES,
   FLIGHTS,
   ROAD_TRIPS,
   SF_PLACES,
@@ -339,12 +340,20 @@ export function generateDemoHistory(options: GenerateOptions = {}): DemoHistory 
     // Drive to the airport, then fly.
     const toAirport = traceRoute(
       ctx,
+      // US-101 south out of the Mission and down the peninsula. Sparse points
+      // here drew a four-kilometre straight line across the city.
       [
         place('home'),
+        [-122.4118, 37.7548],
+        [-122.4085, 37.7462],
         [-122.4054, 37.7203],
-        [-122.3990, 37.7010],
+        [-122.4021, 37.7106],
+        [-122.399, 37.701],
+        [-122.4005, 37.6856],
         [-122.4008, 37.6702],
-        [-122.3960, 37.6430],
+        [-122.3985, 37.6566],
+        [-122.396, 37.643],
+        [-122.3925, 37.6309],
         flight.from,
       ],
       'driving',
@@ -453,7 +462,7 @@ export function generateDemoHistory(options: GenerateOptions = {}): DemoHistory 
         const errandKey = rng() < 0.5 ? 'grocery' : 'gym';
         const errand = traceRoute(
           ctx,
-          [place('home'), place(errandKey)],
+          ERRAND_ROUTES[errandKey] ?? [place('home'), place(errandKey)],
           'walking',
           back.endAt + 40 * 60_000,
           { accuracyBase: 12 },
@@ -488,7 +497,7 @@ export function generateDemoHistory(options: GenerateOptions = {}): DemoHistory 
     // A morning coffee habit, most weekdays.
     if (!isWeekend && rng() < 0.55) {
       const t = atHour(day, 7.9, rng, 20);
-      const walk = traceRoute(ctx, [place('home'), place('cafe')], 'walking', t, {
+      const walk = traceRoute(ctx, ERRAND_ROUTES.cafe!, 'walking', t, {
         accuracyBase: 13,
       });
       addSegment(ctx, nextId(ctx, 'trip'), 'walking', t, walk, 0.8);

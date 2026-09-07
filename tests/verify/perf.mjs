@@ -13,17 +13,33 @@
 
 import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
+import http from 'node:http';
+import https from 'node:https';
+import { URL as NodeURL } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { CHROMIUM_ARGS } from './shoot.mjs';
+import { CHROMIUM_ARGS, devServerUrl } from './shoot.mjs';
 
 const PORT = 5273;
-const URL = `http://localhost:${PORT}/`;
+const URL = devServerUrl(PORT);
 
 async function waitForServer(url, timeoutMs = 60_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      if ((await fetch(url, { signal: AbortSignal.timeout(2000) })).ok) return true;
+      // Self-signed certificate locally, so verification is disabled for the
+      // readiness probe only.
+      const ok = await new Promise((resolve) => {
+        const target = new NodeURL(url);
+        const client = target.protocol === 'https:' ? https : http;
+        const req = client.request(target, { timeout: 2000, rejectUnauthorized: false }, (res) => {
+          res.resume();
+          resolve((res.statusCode ?? 500) < 500);
+        });
+        req.on('error', () => resolve(false));
+        req.on('timeout', () => { req.destroy(); resolve(false); });
+        req.end();
+      });
+      if (ok) return true;
     } catch {
       /* not up yet */
     }

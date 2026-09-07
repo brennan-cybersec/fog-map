@@ -5,11 +5,14 @@
  */
 
 import { spawn } from 'node:child_process';
+import http from 'node:http';
+import https from 'node:https';
+import { URL as NodeURL } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { shoot } from './shoot.mjs';
+import { devServerUrl, shoot } from './shoot.mjs';
 
 const PORT = 5273;
-const URL = `http://localhost:${PORT}/`;
+const URL = devServerUrl(PORT);
 
 /**
  * Views chosen to prove the brief's "premium at every zoom level" requirement:
@@ -55,6 +58,64 @@ const VIEWS = [
     after: async (page) => {
       await page.getByRole('button', { name: 'Statistics' }).click();
       await page.waitForSelector('.chart__col');
+    },
+  },
+  {
+    name: 'mobile-map',
+    center: [-122.4148, 37.7625],
+    zoom: 14.4,
+    settleMs: 5000,
+    viewport: [412, 915],
+  },
+  {
+    name: 'mobile-tracking',
+    center: [-122.4148, 37.7599],
+    zoom: 16,
+    settleMs: 4500,
+    viewport: [412, 915],
+    after: async (page) => {
+      await page.evaluate(() => window.__terra.simulatePosition([-122.4148, 37.7599], 18));
+    },
+  },
+  {
+    // Walks a path through the real tracking pipeline and asserts the fog mask
+    // actually opens up — the core promise of V1.01.
+    name: 'live-walk',
+    center: [-122.4405, 37.7885],
+    zoom: 16.2,
+    settleMs: 4500,
+    after: async (page) => {
+      const before = await page.evaluate(
+        () => window.__terra.debug().coverage?.nonZero ?? 0,
+      );
+      await page.evaluate(() => {
+        // Somewhere the demo user has never been: a few blocks of Pacific
+        // Heights, well clear of the historical commute.
+        const path = [];
+        for (let i = 0; i < 40; i++) {
+          path.push([-122.4405 + i * 0.00035, 37.7885 + i * 0.00012]);
+        }
+        window.__terra.simulateWalk(path, 9);
+      });
+      await page.waitForTimeout(1800);
+      const after = await page.evaluate(
+        () => window.__terra.debug().coverage?.nonZero ?? 0,
+      );
+      if (!(after > before)) {
+        throw new Error(`live walk revealed nothing: coverage ${before} -> ${after}`);
+      }
+      console.log(`  live walk revealed coverage: ${before} -> ${after} px`);
+    },
+  },
+  {
+    name: 'mobile-journeys',
+    center: [-122.4148, 37.7625],
+    zoom: 13,
+    settleMs: 4500,
+    viewport: [412, 915],
+    after: async (page) => {
+      await page.getByRole('button', { name: 'Journeys' }).click();
+      await page.waitForSelector('.tl__day');
     },
   },
   {
@@ -116,15 +177,39 @@ const VIEWS = [
   },
 ];
 
+/**
+ * Probe the dev server until it answers.
+ *
+ * Uses node:http/https directly rather than fetch because the local certificate
+ * is self-signed: fetch rejects it at the handshake, and the alternative is
+ * disabling TLS verification for the whole process, which is far too broad for
+ * a readiness check.
+ */
+function probe(url) {
+  return new Promise((resolve) => {
+    const target = new NodeURL(url);
+    const client = target.protocol === 'https:' ? https : http;
+    const req = client.request(
+      target,
+      { method: 'GET', timeout: 2000, rejectUnauthorized: false },
+      (res) => {
+        res.resume();
+        resolve((res.statusCode ?? 500) < 500);
+      },
+    );
+    req.on('error', () => resolve(false));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(false);
+    });
+    req.end();
+  });
+}
+
 async function waitForServer(url, timeoutMs = 60_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(2000) });
-      if (res.ok) return true;
-    } catch {
-      /* not up yet */
-    }
+    if (await probe(url)) return true;
     await sleep(300);
   }
   return false;
@@ -161,6 +246,7 @@ try {
       url: URL,
       out: `artifacts/screenshots/${view.name}.png`,
       settleMs: view.settleMs,
+      ...(view.viewport ? { viewport: view.viewport } : {}),
       showOnboarding: view.showOnboarding ?? false,
       action: async (page) => {
         await page.waitForFunction(() => window.__terra?.ready(), null, { timeout: 60_000 });

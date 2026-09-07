@@ -59,10 +59,10 @@ export function createRevealedStyle(): StyleSpecification {
           // Lifting the black point too far greys the imagery out; a small lift
           // plus real saturation keeps shadows readable while letting the
           // revealed ground stay vivid against the bright survey paper.
-          'raster-brightness-min': 0.05,
+          'raster-brightness-min': 0.06,
           'raster-brightness-max': 1,
-          'raster-saturation': 0.35,
-          'raster-contrast': 0.05,
+          'raster-saturation': 0.42,
+          'raster-contrast': 0.09,
         },
       },
 

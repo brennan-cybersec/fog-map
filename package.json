@@ -13,7 +13,8 @@
     "verify": "node tests/verify/run.mjs",
     "lint": "tsc -b --noEmit",
     "perf": "node tests/verify/perf.mjs",
-    "serve": "vite preview --port 4173 --host"
+    "serve": "HTTPS=1 vite preview --port 4173 --host",
+    "dev:https": "HTTPS=1 vite --port 5273 --strictPort --host"
   },
   "dependencies": {
     "h3-js": "^4.5.0",

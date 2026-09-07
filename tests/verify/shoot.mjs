@@ -11,8 +11,10 @@
  */
 
 import { chromium } from '@playwright/test';
+import { existsSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { fileURLToPath, URL } from 'node:url';
 
 export const CHROMIUM_ARGS = [
   '--use-gl=angle',
@@ -46,6 +48,7 @@ export async function shoot(opts) {
   const page = await browser.newPage({
     viewport: { width: viewport[0], height: viewport[1] },
     deviceScaleFactor: 2,
+    ignoreHTTPSErrors: true,
   });
 
   const consoleErrors = [];
@@ -116,4 +119,17 @@ export async function shoot(opts) {
   }
 
   return result;
+}
+
+/**
+ * Dev server URL.
+ *
+ * Mirrors the `HTTPS=1` opt-in in vite.config.ts. The harness does not set it,
+ * so it talks plain HTTP to localhost — which is a secure context anyway, and
+ * avoids Chromium's handling of a self-signed certificate.
+ */
+export function devServerUrl(port) {
+  const certPath = fileURLToPath(new URL('../../.certs/dev-cert.pem', import.meta.url));
+  const secure = process.env.HTTPS === '1' && existsSync(certPath);
+  return `${secure ? 'https' : 'http'}://localhost:${port}/`;
 }

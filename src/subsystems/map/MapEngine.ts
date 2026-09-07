@@ -20,8 +20,10 @@ import { FogMaskLayer, type FogStamp } from '../fog-of-war/FogMaskLayer';
 import { buildRouteCollection, installRouteLayers } from '../routes';
 import {
   installLiveLocationLayers,
+  installLiveTrailLayers,
   installReplayLayers,
   setLivePosition,
+  setLiveTrail,
   setReplayTrail,
 } from './LiveLocationLayer';
 import { createFogStyle } from './styles/fogStyle';
@@ -163,6 +165,12 @@ export class MapEngine {
   setLivePosition(fix: LocationFix | null): void {
     installLiveLocationLayers(this.labels);
     setLivePosition(this.labels, fix);
+  }
+
+  /** Draw the path walked during the current live tracking session. */
+  setLiveTrail(trail: readonly LngLat[]): void {
+    installLiveTrailLayers(this.labels);
+    setLiveTrail(this.labels, trail);
   }
 
   /** Draw the trail a journey replay has covered so far. */

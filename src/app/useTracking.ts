@@ -1,32 +1,66 @@
 /**
  * Live tracking, bound to React.
  *
- * The GPS source is imperative and long-lived, so it is created once and only
- * subscribed to here. Nothing in this hook requests a position on mount — the
- * browser prompt appears only when the user turns tracking on.
+ * Owns the GPS source, the running exploration session and the screen wake
+ * lock. Nothing here requests a position on mount — the browser prompt appears
+ * only when the user actually starts tracking.
+ *
+ * The session is what makes live tracking *reveal territory* rather than just
+ * draw a dot: each accepted fix appends a stamp and reports whether it opened
+ * genuinely new ground.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { CleanedFix, LocationFix, TrackingStatus } from '../core/types';
+import type { CleanedFix, ExploredCell, LngLat, LocationFix, TrackingStatus } from '../core/types';
+import { LiveExplorationSession, type LiveDiscovery, type LiveSessionState } from '../subsystems/exploration/liveSession';
 import { LiveGps } from '../subsystems/gps';
+
+const EMPTY_STATE: LiveSessionState = {
+  stamps: [],
+  trail: [],
+  distanceMeters: 0,
+  discoveredCells: 0,
+  fixCount: 0,
+};
 
 export interface TrackingState {
   status: TrackingStatus;
-  /** The most recent fix good enough to act on. */
   fix: LocationFix | null;
-  /** Set when the last reading arrived but was too poor to trust. */
   lastExcluded: CleanedFix | null;
+  session: LiveSessionState;
+  /** Most recent discovery, for the announcement. Cleared by `acknowledgeDiscovery`. */
+  discovery: LiveDiscovery | null;
+  acknowledgeDiscovery: () => void;
   start: () => void;
   stop: () => void;
   toggle: () => void;
+  /**
+   * Feed a synthetic fix through the real pipeline.
+   *
+   * Exists so the verification harness can prove that walking actually reveals
+   * territory, without a device. Injected fixes are marked `source: 'demo'` and
+   * this is reachable only from devtools — the product never fabricates a
+   * position.
+   */
+  injectDemoFix: (coord: LngLat, accuracy?: number) => void;
 }
 
-export function useTracking(): TrackingState {
+export function useTracking(knownCells: ReadonlyMap<string, ExploredCell>): TrackingState {
   const gps = useMemo(() => new LiveGps(), []);
+  const gpsRef = useRef(gps);
+
   const [status, setStatus] = useState<TrackingStatus>(() => gps.getStatus());
   const [fix, setFix] = useState<LocationFix | null>(null);
   const [lastExcluded, setLastExcluded] = useState<CleanedFix | null>(null);
-  const gpsRef = useRef(gps);
+  const [session, setSession] = useState<LiveSessionState>(EMPTY_STATE);
+  const [discovery, setDiscovery] = useState<LiveDiscovery | null>(null);
+
+  const sessionRef = useRef<LiveExplorationSession | null>(null);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+
+  // Rebuilt only when the historical baseline changes, so the session always
+  // knows what counted as explored before this walk started.
+  const knownCellKeys = useMemo(() => [...knownCells.keys()], [knownCells]);
 
   useEffect(() => {
     const source = gpsRef.current;
@@ -41,30 +75,105 @@ export function useTracking(): TrackingState {
         }
         setLastExcluded(null);
         setFix(cleaned.fix);
+
+        const active = sessionRef.current;
+        if (!active) return;
+        const found = active.addFix(cleaned.fix);
+        // A new object each time, so React sees the change; the arrays inside
+        // are appended in place and are not copied per fix.
+        setSession({ ...active.getState() });
+        if (found) setDiscovery(found);
       },
     });
     return () => {
       unsubscribe();
-      // Stop on unmount so a watcher never outlives the view that started it.
       source.stop();
     };
   }, []);
 
-  const start = useCallback(() => {
-    void gpsRef.current.start();
+  /**
+   * Keep the screen awake while tracking.
+   *
+   * Without this the phone sleeps mid-walk, the page is frozen and the trail
+   * arrives as one long straight jump on wake — which looks like a bug and
+   * destroys the demo. Best-effort: unsupported browsers simply carry on.
+   */
+  const acquireWakeLock = useCallback(async () => {
+    try {
+      wakeLockRef.current = (await navigator.wakeLock?.request('screen')) ?? null;
+    } catch {
+      /* denied or unsupported — tracking still works, the screen just sleeps */
+    }
   }, []);
+
+  const releaseWakeLock = useCallback(() => {
+    void wakeLockRef.current?.release().catch(() => {});
+    wakeLockRef.current = null;
+  }, []);
+
+  // The lock is dropped whenever the tab is hidden, so it has to be reclaimed
+  // when the user comes back or the screen sleeps on the next glance away.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && sessionRef.current) void acquireWakeLock();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [acquireWakeLock]);
+
+  const start = useCallback(() => {
+    sessionRef.current = new LiveExplorationSession(knownCellKeys);
+    setSession(EMPTY_STATE);
+    setDiscovery(null);
+    void acquireWakeLock();
+    void gpsRef.current.start();
+  }, [acquireWakeLock, knownCellKeys]);
 
   const stop = useCallback(() => {
     gpsRef.current.stop();
+    releaseWakeLock();
+    // The session's revealed ground is kept on screen after stopping; erasing
+    // what someone just walked would be a strange reward for the walk.
+    sessionRef.current = null;
     setFix(null);
-  }, []);
+  }, [releaseWakeLock]);
 
   const toggle = useCallback(() => {
     if (gpsRef.current.getStatus().enabled) stop();
     else start();
   }, [start, stop]);
 
-  return { status, fix, lastExcluded, start, stop, toggle };
+  const acknowledgeDiscovery = useCallback(() => setDiscovery(null), []);
+
+  const injectDemoFix = useCallback((coord: LngLat, accuracy = 8) => {
+    // Start a session on demand so a simulated walk works even when the browser
+    // has no geolocation available at all.
+    sessionRef.current ??= new LiveExplorationSession(knownCellKeys);
+    const synthetic: LocationFix = {
+      id: `fix-sim-${Date.now()}-${Math.round(coord[0] * 1e5)}`,
+      at: Date.now(),
+      coord,
+      accuracy,
+      source: 'demo',
+    };
+    const found = sessionRef.current.addFix(synthetic);
+    setFix(synthetic);
+    setSession({ ...sessionRef.current.getState() });
+    if (found) setDiscovery(found);
+  }, [knownCellKeys]);
+
+  return {
+    status,
+    fix,
+    lastExcluded,
+    session,
+    discovery,
+    acknowledgeDiscovery,
+    start,
+    stop,
+    toggle,
+    injectDemoFix,
+  };
 }
 
 /**
@@ -91,12 +200,12 @@ export function describeFault(status: TrackingStatus): { title: string; detail: 
       return {
         title: 'Location needs a secure connection',
         detail:
-          'Browsers only provide GPS over HTTPS or on localhost. This is not something site settings can change.',
+          'Browsers only provide GPS over HTTPS or on localhost. Open this page over HTTPS to track your movement.',
       };
     case 'timeout':
       return {
-        title: 'No position yet',
-        detail: 'Your device has not returned a fix. This is common indoors or underground.',
+        title: 'Waiting for a GPS fix',
+        detail: 'Your device has not returned a position yet. This is common indoors or underground.',
       };
     case 'position-unavailable':
       return {

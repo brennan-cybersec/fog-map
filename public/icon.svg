@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Terra Incognita">
+  <rect width="512" height="512" rx="112" fill="#0b0f12"/>
+  <circle cx="256" cy="256" r="168" fill="none" stroke="rgba(243,241,236,0.32)" stroke-width="20"/>
+  <!-- One revealed quadrant: the mark is the product's idea in miniature. -->
+  <path d="M256 88a168 168 0 0 1 168 168H256z" fill="#e8934a"/>
+  <circle cx="256" cy="256" r="40" fill="none" stroke="#f3f1ec" stroke-width="20"/>
+</svg>

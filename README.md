@@ -24,7 +24,7 @@ imagery from Esri World Imagery, both keyless.
 | `pnpm dev` | Run the app in development |
 | `pnpm build` | Production build into `dist/` |
 | `pnpm serve` | Serve the production build on the local network |
-| `pnpm test` | Unit tests (83) |
+| `pnpm test` | Unit tests (93) |
 | `pnpm typecheck` | TypeScript, strict |
 | `pnpm verify` | Screenshot every major view, scrape the console for errors |
 | `pnpm perf` | Measure frame intervals and heap growth |
@@ -33,51 +33,50 @@ The dev port is pinned to 5273 so the verification harness always knows where to
 look. If it reports the port is in use, a previous run is still alive:
 `lsof -ti :5273 | xargs kill`.
 
-## Testing real GPS on a phone
+## Running it on your Android phone
 
-Browsers only expose geolocation in a **secure context**. `localhost` qualifies,
-so tracking works on the development machine over plain HTTP — but a phone
-reaches the app by LAN IP, which does not, and GPS is unavailable there.
-
-Generating a local certificate turns on HTTPS and fixes that:
+This is the intended demo: press one button, walk, watch the map open up.
 
 ```bash
+# 1. Once: a certificate covering this machine and its LAN address.
+#    Browsers only expose GPS in a secure context, and a phone reaches this
+#    machine by IP — which is not one over plain HTTP.
 mkdir -p .certs
-LAN_IP=$(ipconfig getifaddr en0)   # macOS; use `hostname -I` on Linux
+LAN_IP=$(ipconfig getifaddr en0)          # macOS; `hostname -I` on Linux
 openssl req -x509 -newkey rsa:2048 -nodes \
   -keyout .certs/dev-key.pem -out .certs/dev-cert.pem -days 365 \
   -subj "/CN=terra-incognita-local" \
   -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:${LAN_IP}"
 
+# 2. Every time:
 pnpm build && pnpm serve
 ```
 
-Vite picks the certificate up automatically when `.certs/` exists, and serves
-`https://<your-lan-ip>:4173/`. The certificate is self-signed, so the phone warns
-once — accepting it is what makes the origin secure, which is the entire point.
+On the phone, open `https://<your-lan-ip>:4173/`, accept the certificate warning
+once — that is what makes the origin secure — then **Start live tracking**,
+allow location, and walk.
 
-`.certs/` is git-ignored. Re-run the command if your LAN IP changes, since the
-address is baked into the certificate.
+Chrome will offer to install it to the home screen, after which it opens
+full-screen like an app. The screen is held awake while tracking, because a
+phone that sleeps mid-walk resumes with one long straight jump in the trail.
 
-To confirm an environment is actually GPS-capable:
+To confirm an address is actually GPS-capable before you set off:
 
 ```bash
 node tests/verify/prodcheck.mjs https://<your-lan-ip>:4173/
 ```
 
-It reports `secure context: true` when geolocation will work, and fails on any
-console error.
-
-`pnpm verify` writes to `artifacts/screenshots/` and exits non-zero on any
-console error, page exception or render failure. Individual views can be run by
-name: `pnpm verify statistics search`.
+It prints `secure context: true` when geolocation will work.
 
 ## What it does
 
 - **Fog of war** — a WebGL mask erases a survey-map layer to reveal satellite
   imagery exactly where you have been, with a soft, organic boundary.
-- **Live tracking** — real permission-gated GPS, with every failure mode
-  surfaced by name rather than as a silent stall.
+- **Live tracking** — one button. Real permission-gated GPS reveals territory
+  underfoot as you walk, announces genuinely new ground, and holds the screen
+  awake. Every failure mode is surfaced by name rather than as a silent stall.
+- **Installable** — a phone-first layout with bottom sheets and thumb-reachable
+  controls, installable to the home screen as a PWA.
 - **Journeys** — 453 days of history, browsable, with journey replay that runs
   on real elapsed time so a stop in a trip visibly pauses.
 - **Statistics** — distance, streaks, active days, monthly rhythm.
@@ -109,8 +108,15 @@ between runs.
 
 These are real and deliberately not hidden:
 
-- **No persistence.** History lives in memory; export works, but live-tracked
-  fixes do not survive a reload.
+- **No persistence.** History lives in memory; export works, but a live walk
+  does not survive a reload.
+- **No background tracking.** Territory is revealed while the app is open and
+  the screen is awake. Tracking with the phone in a pocket and the screen off
+  needs a different mechanism than the one here.
+- **Demo routes are approximations.** The synthetic history interpolates between
+  hand-placed waypoints, so its lines do not follow street geometry exactly.
+  Route lines recede at street zoom, where the reveal corridor is the accurate
+  record of where the demo user went.
 - **The 60 FPS budget is unverified.** The headless harness renders through
   SwiftShader with no GPU, so it can catch regressions but cannot confirm the
   budget. Heap stability *is* verified: zero growth across two identical
@@ -118,7 +124,6 @@ These are real and deliberately not hidden:
 - **Country attribution is inferred** from proximity to known cities, not from
   border geometry. It under-counts rather than inventing visits, and the UI says
   so where it is shown.
-- **No discovery animation yet** for newly revealed territory.
 
 ## Attribution
 
