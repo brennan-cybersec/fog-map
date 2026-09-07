@@ -1,0 +1,75 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-app:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: FogMap
+        run: xcodegen generate
+
+      - name: Resolve Swift package dependencies
+        working-directory: FogMap
+        run: xcodebuild -resolvePackageDependencies -project FogMap.xcodeproj -scheme FogMap
+
+      # This is the main signal: the App target depends on all four FogMapCore
+      # products (LocationEngine, ExplorationStore, ThemeSystem, MapRenderer), so
+      # building it for the Simulator SDK compiles the whole scaffold, UIKit and
+      # CoreMotion included, which a plain `swift build` on macOS cannot do.
+      - name: Build app for iOS Simulator
+        working-directory: FogMap
+        run: |
+          xcodebuild build \
+            -project FogMap.xcodeproj \
+            -scheme FogMap \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO
+
+  test-core-package:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Find an available iPhone simulator
+        id: sim
+        run: |
+          DEVICE=$(xcrun simctl list devices available -j | jq -r '[.devices[][] | select(.name | test("iPhone"))][0].name')
+          echo "Using simulator: $DEVICE"
+          echo "device=$DEVICE" >> "$GITHUB_OUTPUT"
+
+      # Debug aid: if the scheme name below ("FogMapCore") turns out wrong for
+      # whatever Xcode version the runner has, this prints the real one so the
+      # fix is a one-line change instead of a guessing game.
+      - name: List package schemes
+        working-directory: FogMap/Packages/FogMapCore
+        run: xcodebuild -list
+
+      - name: Run LocationEngine + ExplorationStore unit tests
+        working-directory: FogMap/Packages/FogMapCore
+        run: |
+          xcodebuild test \
+            -scheme FogMapCore \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.device }}" \
+            CODE_SIGNING_ALLOWED=NO

@@ -1,0 +1,13 @@
+## Xcode
+FogMap/*.xcodeproj
+FogMap/build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+## SPM
+.build/
+.swiftpm/
+
+## macOS
+.DS_Store

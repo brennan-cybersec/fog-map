@@ -1,0 +1,46 @@
+name: FogMap
+options:
+  bundleIdPrefix: lol.unknown
+  deploymentTarget:
+    iOS: "16.0"
+
+packages:
+  FogMapCore:
+    path: Packages/FogMapCore
+
+targets:
+  FogMap:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: App
+      - path: Themes
+        buildPhase: resources
+    info:
+      path: App/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: lol.unknown.fogmap
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1"
+    dependencies:
+      - package: FogMapCore
+        product: LocationEngine
+      - package: FogMapCore
+        product: ExplorationStore
+      - package: FogMapCore
+        product: ThemeSystem
+      - package: FogMapCore
+        product: MapRenderer
+
+schemes:
+  FogMap:
+    build:
+      targets:
+        FogMap: all
+    run:
+      config: Debug
+    test:
+      config: Debug

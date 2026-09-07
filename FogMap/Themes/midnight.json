@@ -1,0 +1,15 @@
+{
+  "id": "midnight",
+  "name": "Midnight",
+  "map_style_url": "styles/midnight.json",
+  "fog": {
+    "color": "#0a0e1a",
+    "opacity": 0.94,
+    "edge_softness_meters": 30,
+    "explored_tint": null
+  },
+  "ui": {
+    "accent": "#4ade80",
+    "surface": "#11151f"
+  }
+}
