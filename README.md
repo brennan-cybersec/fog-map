@@ -1,81 +1,88 @@
-# Fog Map
+# Terra Incognita
 
-Scaffold for the app described in `fog-map-build-spec.md` (paste your spec doc back in as that
-file if you want it tracked alongside the code — it currently only exists in chat history).
+A personal world map built from real movement. Territory you have physically
+visited is revealed as vivid satellite ground; everywhere else stays a pale
+cartographic survey — drawn, but not yet experienced.
 
-## What's here
+> **The world is here, but I have only revealed the parts I have actually experienced.**
 
-```
-FogMap/
-  project.yml              XcodeGen spec — generates FogMap.xcodeproj
-  App/                      The iOS app target (SwiftUI, thin — most logic lives in the package)
-  Themes/                   Theme JSON bundles (section 8): midnight.json, vice.json
-  Packages/FogMapCore/      Local SPM package with the four modules from section 4
-    Sources/LocationEngine/     Tier 0/1/2 state machine (section 6) — zero UI deps
-    Sources/ExplorationStore/   SQLite (GRDB) + H3 cell math (sections 5, 9)
-    Sources/ThemeSystem/        Theme model + loader (section 8)
-    Sources/MapRenderer/        Stub only — real fog rendering is M2/M3
-    Tests/                      Unit tests for the two things testable without a device
+![The Mission, revealed along the routes actually travelled](docs/hero.jpg)
+
+## Running it
+
+```bash
+pnpm install
+pnpm exec playwright install chromium   # only needed for the verification loop
+pnpm dev                                # http://localhost:5273
 ```
 
-Effort went almost entirely into `LocationEngine` and `ExplorationStore`, per the spec's own
-call-out that the location engine is "the part to get right" and that M1 gates every later
-milestone. `MapRenderer` is a one-file stub so the four-module architecture compiles as a whole;
-there's no rendering code in it yet.
+No API keys. Map data comes from [OpenFreeMap](https://openfreemap.org) and
+imagery from Esri World Imagery, both keyless.
 
-## Important: this was never compiled
-
-This machine has Xcode Command Line Tools but not full Xcode, so there's no iOS SDK here —
-`xcodebuild` and `swift build` for an iOS target both fail immediately. Nothing in this scaffold
-has been type-checked, let alone run. Treat it as a strong first draft, not working code, and
-expect to spend your first session in Xcode fixing whatever doesn't compile.
-
-The single most likely thing to need a fix is **`SwiftyH3Adapter.swift`** — it's written against
-the H3 binding's documented API without a compiler to check it against. Everything else in
-`ExplorationStore` is written against the `H3Indexing` protocol, so a wrong method name there
-should be a one-file fix, not a ripple.
-
-## Setup
-
-1. Install XcodeGen (not scripted here since it changes your system — your call):
-   ```
-   brew install xcodegen
-   ```
-2. Generate the Xcode project:
-   ```
-   cd FogMap && xcodegen generate
-   ```
-3. Open `FogMap.xcodeproj`, let Xcode resolve the three SPM dependencies (GRDB, SwiftyH3, and
-   whatever H3 binding you settle on if SwiftyH3 doesn't pan out).
-4. Fix whatever the compiler flags — start with `SwiftyH3Adapter.swift`.
-5. Run on a real device (CoreLocation background behavior doesn't mean much in the simulator).
-
-## What's real vs. stubbed
-
-| Module | Status |
+| Command | What it does |
 | --- | --- |
-| `LocationEngine` | Full tier state machine per section 6: significant-change monitoring, geofence sizing, visit monitoring, `CMMotionActivityManager` gating, charging-state timeout extension, deferred location updates, write batching. Not yet run on a device. |
-| `ExplorationStore` | Full schema from section 5, batched ingest, new-cell counting, ring-search for nearest unexplored cell (used to size the Tier 0 geofence). SQLCipher encryption (section 11) is **not** wired up — needs a GRDB build with `SQLITE_HAS_CODEC`, which needs a compiler to get right. |
-| `ThemeSystem` | Full theme model + file-based loader per section 8. `midnight.json` and `vice.json` exist as data; the actual MapLibre style JSON files they point to (`styles/midnight.json`, `styles/vice.json`) don't exist yet — that's real cartographic work for M4. |
-| `MapRenderer` | Stub protocol only. All of section 7 (raster mask pyramid, soft edges) is unbuilt — that's M2/M3. |
-| App target | Enough SwiftUI to request permissions (When In Use first, then Always, per section 12), start/stop the engine, and view the debug log. No map on screen yet. |
+| `pnpm dev` | Run the app |
+| `pnpm test` | Unit tests (83) |
+| `pnpm typecheck` | TypeScript, strict |
+| `pnpm verify` | Screenshot every major view, scrape the console for errors |
+| `pnpm perf` | Measure frame intervals and heap growth |
 
-## Before you touch anything else: run the M1 battery test
+`pnpm verify` writes to `artifacts/screenshots/` and exits non-zero on any
+console error, page exception or render failure. Individual views can be run by
+name: `pnpm verify statistics search`.
 
-Section 6's acceptance criteria are the whole ballgame — build a debug screen (done: `App/DebugLogView.swift`, backed by `TierEventLog`), then measure real battery drain against:
+## What it does
 
-| Scenario | Target |
-| --- | --- |
-| Phone idle 8 hours | < 0.5% |
-| Normal day, familiar commute | < 2% |
-| Road trip through new territory, 4 hours | < 8% |
+- **Fog of war** — a WebGL mask erases a survey-map layer to reveal satellite
+  imagery exactly where you have been, with a soft, organic boundary.
+- **Live tracking** — real permission-gated GPS, with every failure mode
+  surfaced by name rather than as a silent stall.
+- **Journeys** — 453 days of history, browsable, with journey replay that runs
+  on real elapsed time so a stop in a trip visibly pauses.
+- **Statistics** — distance, streaks, active days, monthly rhythm.
+- **Exploration score** — 13 achievements and a level system that tells you what
+  to do next.
+- **Search** — the user's own places plus a world gazetteer, with each result
+  labelled explored / partly explored / unexplored.
+- **Privacy** — top-level controls: home masking, lossless export, real deletion.
 
-If these don't hold on a real device, per the spec: stop, don't proceed to M2.
+## Demo data
 
-## Not done, and deliberately out of scope for this scaffold
+The app ships with a deterministic 18-month synthetic history for a fictional
+person in San Francisco: ~131,000 GPS fixes, 1,151 movements, four road trips and
+three long-haul flights.
 
-- Real MapLibre integration (M2/M3)
-- Boundary cell sets for stats (M5)
-- Poster export (M6)
-- SQLCipher wiring, data export/delete (section 11 privacy requirements)
-- Onboarding flow beyond the bare permission prompts
+**It is not real location data**, it is labelled `source: 'demo'` on every record,
+and the UI carries a permanent demo badge. Regenerating with the same seed
+produces byte-identical history, which is what makes screenshots comparable
+between runs.
+
+## Documentation
+
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — conventions, the data-integrity model,
+  how the fog renderer works and the constraints that keep it working.
+- [`docs/STATUS.json`](docs/STATUS.json) — per-module state, measurements, and
+  the open issues, including what is **not** done.
+
+## Known limitations
+
+These are real and deliberately not hidden:
+
+- **No persistence.** History lives in memory; export works, but live-tracked
+  fixes do not survive a reload.
+- **The 60 FPS budget is unverified.** The headless harness renders through
+  SwiftShader with no GPU, so it can catch regressions but cannot confirm the
+  budget. Heap stability *is* verified: zero growth across two identical
+  interaction passes.
+- **Country attribution is inferred** from proximity to known cities, not from
+  border geometry. It under-counts rather than inventing visits, and the UI says
+  so where it is shown.
+- **No discovery animation yet** for newly revealed territory.
+
+## Attribution
+
+Map data © [OpenFreeMap](https://openfreemap.org) ·
+[OpenMapTiles](https://www.openmaptiles.org/) ·
+[OpenStreetMap](https://www.openstreetmap.org/copyright) contributors.
+Imagery © Esri, Maxar, Earthstar Geographics. Both attributions are required and
+are surfaced in the app.

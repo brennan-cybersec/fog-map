@@ -1,0 +1,66 @@
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: #0b1015;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/*
+ * Two MapLibre maps occupy the same box. The fog map stacks above the revealed
+ * one and is erased to transparency where the user has explored.
+ *
+ * Sizing lives on these wrappers rather than on the map containers themselves:
+ * MapLibre stamps `.maplibregl-map { position: relative }` onto every container
+ * it initialises, which would override an equally specific rule of ours and
+ * collapse the container to zero height.
+ */
+/* The element React hands to the map engine; the engine builds the stack inside. */
+.map-host {
+  position: absolute;
+  inset: 0;
+}
+
+.map-stack {
+  position: absolute;
+  inset: 0;
+}
+
+.map-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.map-layer > div {
+  width: 100%;
+  height: 100%;
+}
+
+/* The fog and label planes must not paint an opaque background, or the reveal
+   has nothing to show through to. */
+.map-layer[data-plane="fog"] > div,
+.map-layer[data-plane="labels"] > div {
+  background: transparent;
+}
+
+/* The label plane sits on top purely to draw type; it must not intercept the
+   drag, zoom and click interactions belonging to the fog plane beneath it. */
+.map-layer--passthrough {
+  pointer-events: none;
+}
+
+.maplibregl-canvas {
+  outline: none;
+}

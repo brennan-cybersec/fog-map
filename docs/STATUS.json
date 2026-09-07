@@ -1,0 +1,248 @@
+{
+  "product": "Terra Incognita",
+  "version": "0.6.0",
+  "lastVerifiedAt": "2026-09-07T13:52:00Z",
+  "verification": {
+    "command": "pnpm verify",
+    "renderer": "ANGLE SwiftShader (WebGL2, headless Chromium)",
+    "views": [
+      "onboarding",
+      "world",
+      "california",
+      "bay-area",
+      "san-francisco",
+      "mission-street",
+      "live-position",
+      "journeys",
+      "statistics",
+      "exploration",
+      "search",
+      "privacy",
+      "deleted-empty-state",
+      "replay"
+    ],
+    "result": "OK",
+    "consoleErrors": 0,
+    "pageErrors": 0
+  },
+  "tests": {
+    "command": "pnpm test",
+    "files": 8,
+    "passing": 83,
+    "failing": 0,
+    "typecheck": "clean"
+  },
+  "demoWorld": {
+    "seed": 20260907,
+    "months": 18,
+    "fixes": 131472,
+    "segments": 1151,
+    "visits": 1150,
+    "trips": 7,
+    "totalKm": 47870,
+    "exploredCells": 3199,
+    "exploredKm2": 337.0,
+    "worldLandPercent": 0.000226,
+    "explorationBuildMs": 121,
+    "uniqueRenderedRoutes": 43,
+    "busiestRouteTravelled": 326
+  },
+  "measured": {
+    "explorationBuildMs": 121,
+    "statisticsComputeMs": 3,
+    "achievementsEvaluateMs": 31,
+    "searchIndexBuildMs": 107,
+    "searchQueryMs": 0.072,
+    "fogStamps": 17240,
+    "frameTiming": {
+      "harness": "headless Chromium via SwiftShader (software rasteriser, no GPU)",
+      "meanFps": 9.4,
+      "p95FrameMs": 183.2,
+      "caveat": "Absolute frame rates from this harness are a floor, not a prediction for real hardware. Useful for regression detection, not for asserting the 60 FPS budget."
+    },
+    "heapGrowthAcrossTwoIdenticalPasses": "0.0 MB"
+  },
+  "modules": {
+    "map": {
+      "score": 8.5,
+      "state": "passing",
+      "notes": "Three synchronised planes (imagery / survey / labels). Verified at five zoom levels from planet to street.",
+      "screenshots": [
+        "artifacts/screenshots/mission-street.png",
+        "artifacts/screenshots/california.png"
+      ]
+    },
+    "fog-of-war": {
+      "score": 8.5,
+      "state": "passing",
+      "notes": "Two-pass WebGL mask: MAX-blended coverage buffer, destination-out composite. Minimum on-screen radius keeps corridors legible when zoomed out.",
+      "screenshots": [
+        "artifacts/screenshots/mission-street.png"
+      ]
+    },
+    "geospatial": {
+      "score": 8.0,
+      "state": "passing",
+      "notes": "Haversine, RDP simplification, seeded RNG."
+    },
+    "demo-data": {
+      "score": 8.5,
+      "state": "passing",
+      "notes": "Deterministic 18-month history in the subject's local time. Road-following waypoints; regression tests for impossible journeys, unbacked visit counts and out-of-range timestamps."
+    },
+    "exploration": {
+      "score": 8.5,
+      "state": "passing",
+      "notes": "H3 res-9 cells for statistics, continuous stamps for rendering. Accuracy drives reveal radius and strength; flights reveal endpoints only."
+    },
+    "routes": {
+      "score": 8.0,
+      "state": "passing",
+      "notes": "1151 segments collapse to 43 unique routes; travel frequency drives line weight."
+    },
+    "statistics": {
+      "score": 8.5,
+      "state": "passing",
+      "notes": "Pure aggregation, 23 tests, ~3ms on the full dataset. Chart excludes flights so one long-haul does not flatten 18 months of daily life.",
+      "screenshots": [
+        "artifacts/screenshots/statistics.png"
+      ]
+    },
+    "achievements": {
+      "score": 8.5,
+      "state": "passing",
+      "notes": "13 achievements; the demo user earns 10. Country attribution inferred from city proximity, with the limitation stated in the UI.",
+      "screenshots": [
+        "artifacts/screenshots/exploration.png"
+      ]
+    },
+    "search": {
+      "score": 8.0,
+      "state": "passing",
+      "notes": "496 indexed entries over user history plus a curated world gazetteer. 0.072ms per query. Results carry exploration state.",
+      "screenshots": [
+        "artifacts/screenshots/search.png"
+      ]
+    },
+    "gps": {
+      "score": 8.0,
+      "state": "passing",
+      "notes": "Real geolocation with battery profiles. Every documented fault surfaces distinctly; bad fixes are marked excluded, never deleted."
+    },
+    "permissions": {
+      "score": 8.0,
+      "state": "passing",
+      "notes": "Insecure context reported separately from denial; mid-session revocation detected."
+    },
+    "timeline": {
+      "score": 8.0,
+      "state": "passing",
+      "notes": "453 days grouped and virtualised. Replay interpolates on real elapsed time, so a stop in a journey visibly pauses.",
+      "screenshots": [
+        "artifacts/screenshots/journeys.png",
+        "artifacts/screenshots/replay.png"
+      ]
+    },
+    "storage": {
+      "score": 6.0,
+      "state": "partial",
+      "notes": "Lossless GeoJSON and raw JSON export work. IndexedDB persistence is NOT implemented; the demo world lives in memory and the UI says so."
+    },
+    "ui": {
+      "score": 8.0,
+      "state": "passing",
+      "notes": "One design system across map HUD, four drawers, search and onboarding."
+    },
+    "onboarding": {
+      "score": 8.0,
+      "state": "passing",
+      "notes": "One screen, two honest choices; demo needs no location permission.",
+      "screenshots": [
+        "artifacts/screenshots/onboarding.png"
+      ]
+    },
+    "privacy": {
+      "score": 8.0,
+      "state": "passing",
+      "notes": "Top-level panel. Home masking and delete-all do real work; deletion returns the map to unexplored.",
+      "screenshots": [
+        "artifacts/screenshots/privacy.png",
+        "artifacts/screenshots/deleted-empty-state.png"
+      ]
+    },
+    "performance": {
+      "score": 6.0,
+      "state": "partial",
+      "notes": "Frame intervals and heap are now measured (pnpm perf). Memory stability is verified: zero heap growth across two identical interaction passes. The 60 FPS budget remains UNVERIFIED because this environment has no GPU."
+    },
+    "places": {
+      "score": 4.0,
+      "state": "partial",
+      "notes": "Places exist in the model and statistics; there is no dedicated places surface or favouriting UI."
+    },
+    "notifications": {
+      "score": 0,
+      "state": "not-started"
+    }
+  },
+  "openIssues": [
+    {
+      "id": "OI-2",
+      "severity": "medium",
+      "area": "performance",
+      "summary": "The 60 FPS budget is still unverified: the headless harness renders via SwiftShader with no GPU, so it can only detect regressions, not confirm the budget. Needs a run on real hardware."
+    },
+    {
+      "id": "OI-5",
+      "severity": "high",
+      "area": "storage",
+      "summary": "No IndexedDB persistence. Live-tracked fixes are not durable across a reload; only export is implemented."
+    },
+    {
+      "id": "OI-6",
+      "severity": "medium",
+      "area": "fog-of-war",
+      "summary": "No discovery animation. Newly revealed territory appears without the 'new territory discovered' moment the brief calls for."
+    },
+    {
+      "id": "OI-4",
+      "severity": "medium",
+      "area": "fog-of-war",
+      "summary": "The reveal is rebuilt wholesale; live tracking has no incremental update path."
+    },
+    {
+      "id": "OI-7",
+      "severity": "low",
+      "area": "search",
+      "summary": "Subsequence matching is loose \u2014 'tok' matches 'Thessaloniki'. Exact prefixes still rank first."
+    },
+    {
+      "id": "OI-3",
+      "severity": "low",
+      "area": "map",
+      "summary": "Revealed imagery reads dark where a narrow corridor crosses dense tree canopy at city zoom."
+    }
+  ],
+  "resolvedIssues": [
+    "MapLibre stylesheet load order collapsed map containers to zero height.",
+    "Fog mask rendered nothing: modelViewProjectionMatrix expects world-pixel coords, not normalised mercator.",
+    "Matrix uploads silently rejected because MapLibre supplies Float64Array where uniformMatrix4fv requires Float32Array.",
+    "Stencil/scissor state inherited from MapLibre discarded the composite pass.",
+    "Radius folded into the corner attribute collapsed the radial falloff.",
+    "Duplicate place labels across the fog boundary; fixed with a dedicated label plane.",
+    "Demo road trips interpolated straight lines across San Francisco Bay.",
+    "380 stacked commute polylines compounded alpha into opaque bands over the map.",
+    "MapLibre rejects a zoom expression nested inside a multiply.",
+    "Rail stretched to the drawer's width and hid its own buttons behind it.",
+    "Demo routine generated in UTC put a San Francisco commute at 03:45 local.",
+    "Local-time generation dated the tail of the history after its declared end.",
+    "Place.visitCount was inflated relative to the visit records backing it.",
+    "Performance was entirely unmeasured; frame timing and heap instrumentation now exist and show no per-frame retention."
+  ],
+  "nextUp": [
+    "Confirm the 60 FPS budget on real GPU hardware.",
+    "IndexedDB persistence so live tracking survives a reload.",
+    "Discovery animation for newly revealed territory.",
+    "A places surface with favouriting."
+  ]
+}

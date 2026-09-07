@@ -2,74 +2,68 @@ name: Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, web-rewrite]
   pull_request:
     branches: [main]
   workflow_dispatch:
 
 jobs:
-  build-app:
-    runs-on: macos-15
+  check:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode
-        uses: maxim-lobanov/setup-xcode@v1
+      - uses: pnpm/action-setup@v4
         with:
-          xcode-version: latest-stable
+          version: 10
 
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
 
-      - name: Generate Xcode project
-        working-directory: FogMap
-        run: xcodegen generate
+      - run: pnpm install --frozen-lockfile
 
-      - name: Resolve Swift package dependencies
-        working-directory: FogMap
-        run: xcodebuild -resolvePackageDependencies -project FogMap.xcodeproj -scheme FogMap
+      - name: Typecheck
+        run: pnpm typecheck
 
-      # This is the main signal: the App target depends on all four FogMapCore
-      # products (LocationEngine, ExplorationStore, ThemeSystem, MapRenderer), so
-      # building it for the Simulator SDK compiles the whole scaffold, UIKit and
-      # CoreMotion included, which a plain `swift build` on macOS cannot do.
-      - name: Build app for iOS Simulator
-        working-directory: FogMap
-        run: |
-          xcodebuild build \
-            -project FogMap.xcodeproj \
-            -scheme FogMap \
-            -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO
+      - name: Unit tests
+        run: pnpm test
 
-  test-core-package:
-    runs-on: macos-15
+      - name: Production build
+        run: pnpm build
+
+  # The visual loop is the project's main quality signal, so it runs in CI too.
+  # It drives a real browser with WebGL on SwiftShader and fails on any console
+  # error, page exception or render failure.
+  verify:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode
-        uses: maxim-lobanov/setup-xcode@v1
+      - uses: pnpm/action-setup@v4
         with:
-          xcode-version: latest-stable
+          version: 10
 
-      - name: Find an available iPhone simulator
-        id: sim
-        run: |
-          DEVICE=$(xcrun simctl list devices available -j | jq -r '[.devices[][] | select(.name | test("iPhone"))][0].name')
-          echo "Using simulator: $DEVICE"
-          echo "device=$DEVICE" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
 
-      # Debug aid: if the scheme name below ("FogMapCore") turns out wrong for
-      # whatever Xcode version the runner has, this prints the real one so the
-      # fix is a one-line change instead of a guessing game.
-      - name: List package schemes
-        working-directory: FogMap/Packages/FogMapCore
-        run: xcodebuild -list
+      - run: pnpm install --frozen-lockfile
 
-      - name: Run LocationEngine + ExplorationStore unit tests
-        working-directory: FogMap/Packages/FogMapCore
-        run: |
-          xcodebuild test \
-            -scheme FogMapCore-Package \
-            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.device }}" \
-            CODE_SIGNING_ALLOWED=NO
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Depends on OpenFreeMap and Esri tile servers, so a network blip here is
+      # an infrastructure failure rather than a code regression.
+      - name: Screenshot and scrape every view
+        run: pnpm verify
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: artifacts/screenshots/
+          retention-days: 14

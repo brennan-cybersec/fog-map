@@ -1,0 +1,85 @@
+/*
+ * Design tokens.
+ *
+ * The map is the product, and it is bright — pale survey paper and sunlit
+ * satellite imagery. So the interface is the opposite: deep warm ink glass that
+ * sits over the map like the chrome of a good camera app, never competing with
+ * it for attention. Everything is one accent (the same amber the routes are
+ * drawn in) so the UI and the cartography read as one designed system.
+ */
+
+:root {
+  /* Surfaces ------------------------------------------------------------- */
+  --ink-900: #0b0f12;
+  --ink-800: #10151a;
+  --ink-700: #171d23;
+  --ink-600: #222a32;
+
+  /* Panels are translucent so the map stays perceptible underneath, which is
+     what keeps the interface feeling laid *on* the world rather than over it. */
+  --surface: rgba(11, 15, 18, 0.82);
+  --surface-strong: rgba(11, 15, 18, 0.94);
+  --surface-raised: rgba(23, 29, 35, 0.86);
+  --hairline: rgba(255, 255, 255, 0.1);
+  --hairline-strong: rgba(255, 255, 255, 0.16);
+
+  /* Type ----------------------------------------------------------------- */
+  --text: #f3f1ec;
+  --text-dim: rgba(243, 241, 236, 0.62);
+  --text-faint: rgba(243, 241, 236, 0.38);
+
+  /* Accent — the same amber the route lines use. */
+  --accent: #e8934a;
+  --accent-bright: #f4a862;
+  --accent-dim: rgba(232, 147, 74, 0.18);
+  --accent-glow: rgba(232, 147, 74, 0.32);
+
+  /* The paper tone of unexplored territory, reused for "unexplored" chips so
+     the legend and the map share a vocabulary. */
+  --paper: #eceae5;
+  --unexplored: rgba(200, 196, 186, 0.9);
+
+  --positive: #7fb88a;
+  --warning: #e2b657;
+  --danger: #e0715f;
+
+  /* Geometry ------------------------------------------------------------- */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-pill: 999px;
+
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+
+  /* A single soft shadow, used sparingly. Stacked drop shadows are the fastest
+     way to make an interface look cheap. */
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.32), 0 2px 8px rgba(0, 0, 0, 0.24);
+
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Tabular figures stop counters from jittering as they animate. */
+  --font-num: ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/*
+ * Motion is a preference, not a decoration. Everything animated below collapses
+ * to an instant state change when the viewer asks for reduced motion.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
