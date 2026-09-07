@@ -1,0 +1,1391 @@
+/*
+ * Interface chrome.
+ *
+ * Everything here floats over the map, so the governing rule is restraint: the
+ * panels occupy corners, never the centre, and nothing large enough to obscure
+ * the world may appear without the user asking for it.
+ */
+
+.hud {
+  position: absolute;
+  inset: 0;
+  /* The HUD is a layout container, not a surface — clicks must reach the map
+     unless they land on an actual control. */
+  pointer-events: none;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--s-4);
+  padding: var(--s-4);
+  font-family: var(--font);
+  color: var(--text);
+}
+
+.hud > * {
+  pointer-events: auto;
+}
+
+/* --- Panel ------------------------------------------------------------- */
+
+.panel {
+  background: var(--surface);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+}
+
+/* --- Exploration summary (top left) ------------------------------------- */
+
+.summary {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: start;
+  min-width: 268px;
+  max-width: 300px;
+  padding: var(--s-4) var(--s-4) var(--s-3);
+}
+
+.summary__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-bottom: var(--s-4);
+}
+
+.summary__mark {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+
+.summary__title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.summary__hero {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+}
+
+.summary__value {
+  font-family: var(--font-num);
+  font-size: 38px;
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary__unit {
+  font-size: 15px;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.summary__caption {
+  margin: var(--s-2) 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+.summary__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-3) var(--s-4);
+  margin-top: var(--s-4);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--hairline);
+}
+
+.stat__value {
+  font-family: var(--font-num);
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat__label {
+  margin-top: 3px;
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* --- Level meter --------------------------------------------------------- */
+
+.level {
+  margin-top: var(--s-4);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--hairline);
+}
+
+.level__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 11.5px;
+  margin-bottom: var(--s-2);
+}
+
+.level__name {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.level__next {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.meter {
+  height: 3px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.meter__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-bright));
+  transition: width 900ms var(--ease-out);
+}
+
+/* --- Right rail ---------------------------------------------------------- */
+
+.rail {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  align-self: start;
+  /* Without this the rail stretches to the width of the widest item sharing
+     this grid cell — the drawer — and ends up as a 370px slab hidden behind it. */
+  justify-self: end;
+  width: max-content;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s-1);
+  z-index: 2;
+}
+
+.rail__btn {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 160ms var(--ease), color 160ms var(--ease);
+}
+
+.rail__btn:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+}
+
+.rail__btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.rail__btn[aria-pressed="true"] {
+  background: var(--accent-dim);
+  color: var(--accent-bright);
+}
+
+.rail__sep {
+  height: 1px;
+  margin: var(--s-1) var(--s-2);
+  background: var(--hairline);
+}
+
+/* --- Drawer -------------------------------------------------------------- */
+
+/*
+ * Panels slide in from the right, beside the rail that opened them, and stop
+ * well short of full width — the map must never be fully covered.
+ */
+.drawer {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  justify-self: end;
+  align-self: stretch;
+  width: min(370px, calc(100vw - 96px));
+  margin-right: 54px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: drawer-in 260ms var(--ease-out);
+}
+
+@keyframes drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+}
+
+.panelbody {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.panelbody__head {
+  padding: var(--s-4) var(--s-4) var(--s-3);
+  border-bottom: 1px solid var(--hairline);
+  flex: none;
+}
+
+.panelbody__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.panelbody__sub {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+/* --- Notable journeys ---------------------------------------------------- */
+
+.trips {
+  flex: none;
+  padding: var(--s-3) var(--s-4);
+  border-bottom: 1px solid var(--hairline);
+  max-height: 220px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.trips__title {
+  margin: 0 0 var(--s-2);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.trips__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.tl__tripmain {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.trips__meta {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Timeline ------------------------------------------------------------ */
+
+.tl {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  flex: 1;
+  min-height: 0;
+  padding: 0 var(--s-4) var(--s-4);
+}
+
+.tl__day {
+  padding-top: var(--s-4);
+}
+
+.tl__dayhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-2);
+  position: sticky;
+  top: 0;
+  padding: var(--s-2) 0;
+  background: linear-gradient(var(--surface-strong) 70%, transparent);
+  z-index: 1;
+}
+
+.tl__date {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.tl__daymeta {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.tl__trip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  width: 100%;
+  margin-bottom: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--r-md);
+  background: var(--accent-dim);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 160ms var(--ease);
+}
+
+.tl__trip:hover {
+  background: var(--accent-glow);
+}
+
+.tl__tripname {
+  font-weight: 600;
+}
+
+.tl__replay {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-bright);
+  flex: none;
+}
+
+.tl__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tl__entry {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  width: 100%;
+  padding: 7px var(--s-2);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms var(--ease);
+}
+
+.tl__entry:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tl__entry--visit {
+  cursor: default;
+}
+
+.tl__entry--visit:hover {
+  background: transparent;
+}
+
+/* The connecting rule that makes the column read as one continuous day rather
+   than a stack of unrelated rows. */
+.tl__dot {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--accent);
+}
+
+.tl__dot::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 11px;
+  width: 1px;
+  height: 22px;
+  transform: translateX(-50%);
+  background: var(--hairline);
+}
+
+.tl__list li:last-child .tl__dot::after {
+  display: none;
+}
+
+.tl__dot--walking,
+.tl__dot--running {
+  background: #f0a868;
+}
+.tl__dot--cycling {
+  background: #f2b872;
+}
+.tl__dot--driving {
+  background: #e8934a;
+}
+.tl__dot--flight {
+  background: #8fb8c8;
+}
+.tl__dot--visit {
+  background: transparent;
+  border: 1.5px solid var(--text-faint);
+}
+
+.tl__entrymain {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.tl__entrytitle {
+  font-size: 12.5px;
+}
+
+.tl__entrytime {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.tl__hedge {
+  font-style: italic;
+}
+
+/* --- Statistics ---------------------------------------------------------- */
+
+.scope {
+  display: flex;
+  gap: 2px;
+  margin-top: var(--s-3);
+  flex-wrap: wrap;
+}
+
+.scope__btn {
+  padding: 4px var(--s-2);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 140ms var(--ease), color 140ms var(--ease);
+}
+
+.scope__btn:hover {
+  color: var(--text);
+}
+
+.scope__btn[aria-pressed="true"] {
+  background: var(--accent-dim);
+  color: var(--accent-bright);
+}
+
+.statbody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 var(--s-4) var(--s-4);
+}
+
+.statblock {
+  padding: var(--s-4) 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.statblock:last-of-type {
+  border-bottom: 0;
+}
+
+.statblock__title {
+  margin: 0 0 var(--s-3);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.statblock__hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.statblock__value {
+  font-size: 30px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.statblock__label {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.statgrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s-4) var(--s-3);
+}
+
+/* --- Chart --------------------------------------------------------------- */
+
+.chart__cols {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 84px;
+}
+
+.chart__col {
+  flex: 1;
+  min-width: 2px;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(180deg, var(--accent-bright), var(--accent));
+  opacity: 0.85;
+  transition: opacity 140ms var(--ease);
+}
+
+.chart__col:hover {
+  opacity: 1;
+}
+
+.chart__axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--s-2);
+  font-size: 10px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Bars ---------------------------------------------------------------- */
+
+.bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.bars__row {
+  display: grid;
+  grid-template-columns: 62px 1fr auto;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: 11.5px;
+}
+
+.bars__label {
+  color: var(--text-dim);
+}
+
+.bars__track {
+  height: 5px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.bars__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.bars__fill--flight {
+  background: #8fb8c8;
+}
+.bars__fill--walking,
+.bars__fill--running {
+  background: #f0a868;
+}
+.bars__fill--cycling {
+  background: #f2b872;
+}
+
+.bars__value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Places -------------------------------------------------------------- */
+
+.places {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.places__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: 5px 0;
+  font-size: 12.5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.places__row:last-child {
+  border-bottom: 0;
+}
+
+.places__count {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.statfoot {
+  margin: var(--s-4) 0 0;
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* --- Search -------------------------------------------------------------- */
+
+.search {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
+  align-self: start;
+  width: min(380px, 100%);
+  position: relative;
+}
+
+.search__field {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 0 var(--s-3);
+  height: 40px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow);
+  color: var(--text-faint);
+}
+
+.search__field:focus-within {
+  border-color: var(--accent-glow);
+  color: var(--text-dim);
+}
+
+.search__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.search__input::placeholder {
+  color: var(--text-faint);
+}
+
+/* Chrome draws its own clear affordance on type=search; ours is Escape. */
+.search__input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.search__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--s-2);
+  border-radius: var(--r-lg);
+  background: var(--surface-strong);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow);
+}
+
+.search__hint,
+.search__none {
+  margin: 0;
+  padding: var(--s-2) var(--s-3);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.search__none {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12.5px;
+}
+
+.search__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.search__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  width: 100%;
+  padding: var(--s-2) var(--s-3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.search__item--active {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.search__main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.search__name {
+  font-size: 13px;
+}
+
+.search__secondary {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.search__state {
+  flex: none;
+  padding: 2px var(--s-2);
+  border-radius: var(--r-pill);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  border: 1px solid var(--hairline);
+  color: var(--text-faint);
+}
+
+.search__state--explored,
+.search__state--frequently-visited {
+  background: rgba(125, 155, 105, 0.18);
+  border-color: rgba(125, 155, 105, 0.4);
+  color: #a8c294;
+}
+
+.search__state--recently-visited {
+  background: var(--accent-dim);
+  border-color: rgba(232, 147, 74, 0.4);
+  color: var(--accent-bright);
+}
+
+.search__state--partially-explored {
+  background: rgba(226, 182, 87, 0.14);
+  border-color: rgba(226, 182, 87, 0.35);
+  color: #e0c07a;
+}
+
+/* --- Achievements -------------------------------------------------------- */
+
+.components {
+  list-style: none;
+  margin: var(--s-4) 0 var(--s-3);
+  padding: 0;
+}
+
+.components__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: 3px 0;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.components__points {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.ach {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.ach__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+}
+
+.ach__badge {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 13px;
+  /* Locked badges are outlined rather than filled, so an unearned achievement
+     never looks like an earned one at a glance. */
+  border: 1px solid var(--hairline-strong);
+  color: var(--text-faint);
+  background: transparent;
+}
+
+.ach__row--done .ach__badge--bronze {
+  background: rgba(196, 130, 84, 0.22);
+  border-color: rgba(196, 130, 84, 0.55);
+  color: #d9a172;
+}
+
+.ach__row--done .ach__badge--silver {
+  background: rgba(186, 196, 206, 0.2);
+  border-color: rgba(186, 196, 206, 0.5);
+  color: #cdd6e0;
+}
+
+.ach__row--done .ach__badge--gold {
+  background: var(--accent-dim);
+  border-color: rgba(232, 147, 74, 0.6);
+  color: var(--accent-bright);
+}
+
+.ach__main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ach__title {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.ach__row:not(.ach__row--done) .ach__title {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.ach__desc {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-faint);
+  margin-bottom: 2px;
+}
+
+.ach__progress {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Prose, toggles and buttons ------------------------------------------ */
+
+.prose {
+  margin: 0 0 var(--s-3);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+.prose--note {
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+
+.toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  padding: var(--s-2) 0;
+  cursor: pointer;
+}
+
+.toggle input {
+  margin-top: 2px;
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  flex: none;
+  cursor: pointer;
+}
+
+.toggle__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggle__label {
+  font-size: 12.5px;
+}
+
+.toggle__detail {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+
+.btnrow {
+  display: flex;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 7px var(--s-3);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 140ms var(--ease), border-color 140ms var(--ease);
+}
+
+.btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--hairline-strong);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Destructive actions are stated in the danger colour only once the user has
+   asked for them, so the panel does not read as alarming at rest. */
+.btn--danger {
+  border-color: rgba(224, 113, 95, 0.5);
+  background: rgba(224, 113, 95, 0.14);
+  color: #f0998a;
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: rgba(224, 113, 95, 0.24);
+}
+
+/* --- Replay bar ---------------------------------------------------------- */
+
+.replay {
+  grid-column: 2;
+  grid-row: 3;
+  justify-self: center;
+  align-self: end;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  min-width: min(520px, calc(100vw - 32px));
+}
+
+.replay__btn {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--ink-900);
+  cursor: pointer;
+}
+
+.replay__meta {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay__scrub {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.replay__close {
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: var(--s-1);
+}
+
+/* --- Notice -------------------------------------------------------------- */
+
+/*
+ * Sits under the summary rather than over the map's centre: a tracking problem
+ * is worth telling the user about, but never worth covering the world with.
+ */
+.notice {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: start;
+  max-width: 300px;
+  padding: var(--s-3) var(--s-4);
+  border-left: 2px solid var(--warning);
+}
+
+.notice__title {
+  margin: 0 0 var(--s-1);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.notice__detail {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+/* --- Footer -------------------------------------------------------------- */
+
+.footer {
+  grid-column: 1 / span 3;
+  grid-row: 3;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-4);
+  pointer-events: none;
+}
+
+.footer > * {
+  pointer-events: auto;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 7px var(--s-3);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--hairline);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warning);
+  flex: none;
+}
+
+.attribution {
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: rgba(40, 44, 48, 0.62);
+  text-align: right;
+  max-width: 340px;
+  /* Sits directly on the pale map rather than in a panel, the way map
+     attribution conventionally does. */
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+.attribution a {
+  color: inherit;
+}
+
+/* --- Legend -------------------------------------------------------------- */
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-2) var(--s-4);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--hairline);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.legend__item {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  white-space: nowrap;
+}
+
+.legend__swatch {
+  width: 18px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.legend__swatch--explored {
+  background: linear-gradient(100deg, #5d7a52, #8a9a6b);
+}
+
+.legend__swatch--unexplored {
+  background: var(--unexplored);
+  border: 1px solid rgba(120, 116, 106, 0.5);
+}
+
+.legend__swatch--route {
+  background: var(--accent);
+  height: 3px;
+  border-radius: var(--r-pill);
+}
+
+/* --- Loading ------------------------------------------------------------- */
+
+.boot {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: var(--ink-900);
+  transition: opacity 700ms var(--ease), visibility 700ms;
+}
+
+.boot[data-done="true"] {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.boot__inner {
+  text-align: center;
+  max-width: 320px;
+  padding: var(--s-5);
+}
+
+.boot__mark {
+  width: 40px;
+  height: 40px;
+}
+
+.boot__title {
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text);
+  margin: var(--s-4) 0 var(--s-2);
+}
+
+.boot__sub {
+  font-family: var(--font);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-faint);
+  margin: 0 0 var(--s-5);
+}
+
+.boot__bar {
+  height: 2px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.boot__bar span {
+  display: block;
+  height: 100%;
+  width: 34%;
+  border-radius: inherit;
+  background: var(--accent);
+  animation: boot-sweep 1.5s var(--ease) infinite;
+}
+
+@keyframes boot-sweep {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+/* --- Onboarding ---------------------------------------------------------- */
+
+.onboard {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: var(--s-5);
+  /* Deep vignette rather than a flat scrim: the map stays visible at the edges,
+     so the first thing the user sees is still the world. */
+  background: radial-gradient(
+    ellipse at center,
+    rgba(8, 11, 14, 0.82) 0%,
+    rgba(8, 11, 14, 0.62) 100%
+  );
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: onboard-in 500ms var(--ease-out);
+}
+
+@keyframes onboard-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.onboard__card {
+  max-width: 430px;
+  text-align: center;
+}
+
+.onboard__mark {
+  width: 44px;
+  height: 44px;
+}
+
+.onboard__title {
+  margin: var(--s-4) 0 var(--s-2);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.onboard__lede {
+  margin: 0 0 var(--s-4);
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--accent-bright);
+}
+
+.onboard__body {
+  margin: 0 0 var(--s-5);
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text-dim);
+}
+
+.onboard__actions {
+  display: flex;
+  gap: var(--s-2);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink-900);
+  font-weight: 600;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+}
+
+.onboard__fine {
+  margin: var(--s-5) 0 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-faint);
+}
+
+/* --- Responsive ---------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .hud {
+    padding: var(--s-3);
+    gap: var(--s-3);
+  }
+
+  .summary {
+    min-width: 0;
+    max-width: none;
+    grid-column: 1 / span 2;
+  }
+
+  .summary__value {
+    font-size: 32px;
+  }
+
+  .legend {
+    display: none;
+  }
+
+  .attribution {
+    max-width: 180px;
+  }
+}

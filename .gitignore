@@ -1,13 +1,27 @@
-## Xcode
-FogMap/*.xcodeproj
-FogMap/build/
-DerivedData/
-*.xcuserstate
-xcuserdata/
+## Dependencies
+node_modules/
+.pnpm-store/
 
-## SPM
-.build/
-.swiftpm/
+## Build output
+dist/
+*.tsbuildinfo
 
-## macOS
+## Verification output
+# Screenshots are large (1-5 MB each) and fully regenerable with `pnpm verify`,
+# so they are not tracked. The one image the README needs lives in docs/.
+artifacts/
+
+## Playwright
+test-results/
+playwright-report/
+
+## Editor / OS
 .DS_Store
+.idea/
+.vscode/
+*.swp
+
+## Local env — nothing in this project needs one, but never commit one by accident
+.env
+.env.*
+!.env.example
