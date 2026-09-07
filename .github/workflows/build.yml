@@ -70,6 +70,6 @@ jobs:
         working-directory: FogMap/Packages/FogMapCore
         run: |
           xcodebuild test \
-            -scheme FogMapCore \
+            -scheme FogMapCore-Package \
             -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.device }}" \
             CODE_SIGNING_ALLOWED=NO
