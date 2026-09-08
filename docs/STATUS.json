@@ -67,7 +67,8 @@
     },
     "heapGrowthAcrossTwoIdenticalPasses": "0.0 MB",
     "liveWalkCoverageRevealed": "2,271,204 -> 2,813,962 px (verified end-to-end in a browser)",
-    "persistenceAcrossReload": "1 segment / 45 fixes survived a full page reload (verified in a browser)"
+    "persistenceAcrossReload": "1 segment / 45 fixes survived a full page reload (verified in a browser)",
+    "androidBuild": "BUILD SUCCESSFUL in 2m 4s, 86 tasks; app-debug.apk 6.3 MB; installed and launched on device"
   },
   "modules": {
     "map": {
@@ -200,6 +201,11 @@
       "score": 8.0,
       "state": "passing",
       "notes": "Turns recorded fixes into segments with inferred mode. Rejects stationary jitter via a bounding-box span guard, not just cumulative path length."
+    },
+    "android": {
+      "score": 7.5,
+      "state": "passing",
+      "notes": "Debug APK builds (AGP 9.4 / Gradle 9.6), installs and launches on a Galaxy Z Fold (SM_F976U1). Foreground service merged with foregroundServiceType=\"location\"; permissions come from the plugin, no manual manifest edits. Background tracking itself is not yet confirmed on a real walk."
     }
   },
   "openIssues": [
@@ -229,9 +235,9 @@
     },
     {
       "id": "OI-9",
-      "severity": "high",
+      "severity": "medium",
       "area": "gps",
-      "summary": "Native Android background tracking is written but UNBUILT and UNTESTED: no JDK or Android SDK in the development environment. Needs a real device build to confirm."
+      "summary": "Android APK builds, installs and launches, but background tracking has not been exercised on a real walk: the screen-off, phone-in-pocket behaviour is still unconfirmed."
     },
     {
       "id": "OI-10",
@@ -263,10 +269,12 @@
     "Live-tracked walks were lost on reload; history is now persisted in IndexedDB.",
     "A suspended page bridged its tracking gap with a straight line; the trail now breaks and reports missed time.",
     "Deleting history was session-only; deletion now wipes storage and persists the dismissal.",
-    "IndexedDB transaction was awaited mid-flight, which can auto-commit before follow-up writes land."
+    "IndexedDB transaction was awaited mid-flight, which can auto-commit before follow-up writes land.",
+    "Android build failed on getDefaultProguardFile(\"proguard-android.txt\"), which AGP 9 rejects; fixed in the app and, via a committed pnpm patch, in the background-geolocation plugin.",
+    "Gradle read the unpatched plugin path until cap sync regenerated capacitor.settings.gradle."
   ],
   "nextUp": [
-    "Build and test the Android shell on a real device.",
+    "Confirm background tracking on a real walk with the screen off.",
     "Group consecutive recorded walks into trips.",
     "Confirm the 60 FPS budget on real GPU hardware."
   ]

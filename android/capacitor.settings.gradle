@@ -3,4 +3,4 @@ include ':capacitor-android'
 project(':capacitor-android').projectDir = new File('../node_modules/.pnpm/@capacitor+android@8.5.1_@capacitor+core@8.5.1/node_modules/@capacitor/android/capacitor')
 
 include ':capacitor-community-background-geolocation'
-project(':capacitor-community-background-geolocation').projectDir = new File('../node_modules/.pnpm/@capacitor-community+background-geolocation@1.2.26_@capacitor+core@8.5.1/node_modules/@capacitor-community/background-geolocation/android')
+project(':capacitor-community-background-geolocation').projectDir = new File('../node_modules/.pnpm/@capacitor-community+background-geolocation@1.2.26_patch_hash=3850701c6dde81d29ba5d44f9_1ed97f8159fec3d85c2d41c483b2fa0f/node_modules/@capacitor-community/background-geolocation/android')

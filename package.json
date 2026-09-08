@@ -31,7 +31,10 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
-    ]
+    ],
+    "patchedDependencies": {
+      "@capacitor-community/background-geolocation@1.2.26": "patches/@capacitor-community__background-geolocation@1.2.26.patch"
+    }
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.1",

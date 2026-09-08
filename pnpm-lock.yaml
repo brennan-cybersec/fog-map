@@ -4,13 +4,18 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@capacitor-community/background-geolocation@1.2.26':
+    hash: 3850701c6dde81d29ba5d44f959e6c1488270070f237ae335f980c553c388f24
+    path: patches/@capacitor-community__background-geolocation@1.2.26.patch
+
 importers:
 
   .:
     dependencies:
       '@capacitor-community/background-geolocation':
         specifier: ^1.2.26
-        version: 1.2.26(@capacitor/core@8.5.1)
+        version: 1.2.26(patch_hash=3850701c6dde81d29ba5d44f959e6c1488270070f237ae335f980c553c388f24)(@capacitor/core@8.5.1)
       '@capacitor/android':
         specifier: ^8.5.1
         version: 8.5.1(@capacitor/core@8.5.1)
@@ -1444,7 +1449,7 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@capacitor-community/background-geolocation@1.2.26(@capacitor/core@8.5.1)':
+  '@capacitor-community/background-geolocation@1.2.26(patch_hash=3850701c6dde81d29ba5d44f959e6c1488270070f237ae335f980c553c388f24)(@capacitor/core@8.5.1)':
     dependencies:
       '@capacitor/core': 8.5.1
 

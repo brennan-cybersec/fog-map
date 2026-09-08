@@ -19,7 +19,13 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // Capacitor's template ships 'proguard-android.txt', which newer versions
+            // of the Android Gradle plugin reject outright: it forces -dontoptimize
+            // and so blocks most of R8's work. The -optimize variant is the
+            // supported replacement and is what AGP's own error message directs you
+            // to. Evaluated even though minifyEnabled is false, which is why a
+            // debug build fails on it.
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }

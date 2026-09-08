@@ -101,10 +101,21 @@ for no added capability.
 The app detects the native shell at runtime and switches to the background
 source automatically; nothing needs configuring in the web code.
 
-> **Not verified here.** This machine has no JDK, Android SDK or Android Studio,
-> so the project generates and syncs but has never been compiled or run. Treat
-> the native path as unproven until it runs on a device. The web app, its
-> persistence and its foreground tracking are fully verified.
+### A note on the Gradle version
+
+Android Studio upgrades this project to AGP 9 / Gradle 9 on first open. AGP 9
+rejects `getDefaultProguardFile('proguard-android.txt')`, which both Capacitor's
+app template and the background-geolocation plugin still use. Both are fixed
+here — the app in `android/app/build.gradle`, and the plugin through a committed
+pnpm patch in `patches/`, since it lives in `node_modules`.
+
+If you ever re-run `pnpm android:init`, or add another plugin, re-run
+`pnpm android:sync` afterwards: Gradle resolves plugin paths from
+`capacitor.settings.gradle`, and a patched dependency moves to a new path in the
+pnpm store.
+
+> **Status.** The debug APK builds, installs and launches on a device. Background
+> tracking during an actual screen-off walk has not been confirmed yet.
 
 ## What it does
 
