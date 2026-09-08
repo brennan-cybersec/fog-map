@@ -149,22 +149,28 @@ export function installLiveTrailLayers(map: MapLibreMap): void {
   });
 }
 
-export function setLiveTrail(map: MapLibreMap, trail: readonly LngLat[]): void {
+/**
+ * Draw the walk as separate runs.
+ *
+ * Each run is a stretch of continuously observed movement. Rendering them as one
+ * line would bridge the gaps where the app was suspended, drawing a path across
+ * ground the user may never have crossed.
+ */
+export function setLiveTrail(map: MapLibreMap, runs: readonly (readonly LngLat[])[]): void {
   const source = map.getSource(LIVE_TRAIL_SOURCE) as GeoJSONSource | undefined;
   if (!source) return;
-  if (trail.length < 2) {
+  const drawable = runs.filter((run) => run.length >= 2);
+  if (drawable.length === 0) {
     source.setData(EMPTY);
     return;
   }
   source.setData({
     type: 'FeatureCollection',
-    features: [
-      {
-        type: 'Feature',
-        geometry: { type: 'LineString', coordinates: trail.map((c) => [c[0], c[1]]) },
-        properties: {},
-      },
-    ],
+    features: drawable.map((run) => ({
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: run.map((c) => [c[0], c[1]]) },
+      properties: {},
+    })),
   });
 }
 

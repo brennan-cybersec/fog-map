@@ -108,6 +108,47 @@ const VIEWS = [
     },
   },
   {
+    // Walks, reloads, and asserts the walk is still on the map afterwards.
+    // This is the whole promise of V1.02.
+    name: 'persistence-reload',
+    center: [-122.4405, 37.7885],
+    zoom: 16.2,
+    settleMs: 4500,
+    after: async (page) => {
+      await page.evaluate(() => {
+        const path = [];
+        for (let i = 0; i < 45; i++) {
+          path.push([-122.4405 + i * 0.0004, 37.7885 + i * 0.00014]);
+        }
+        window.__terra.simulateWalk(path, 9);
+      });
+      await page.waitForTimeout(1500);
+      await page.evaluate(() => window.__terra.commitWalk());
+      await page.waitForTimeout(1200);
+
+      const before = await page.evaluate(() => window.__terra.storageCounts());
+      if (!before || before.segments < 1) {
+        throw new Error(`walk was not persisted: ${JSON.stringify(before)}`);
+      }
+
+      // The real test: throw the page away entirely.
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => window.__terra?.ready(), null, { timeout: 60_000 });
+      await page.evaluate(() => window.__terra.idle());
+      await page.waitForTimeout(2500);
+
+      const after = await page.evaluate(() => window.__terra.storageCounts());
+      const stats = await page.evaluate(() => window.__terra.stats);
+      if (!after || after.segments < 1) {
+        throw new Error(`walk did not survive reload: ${JSON.stringify(after)}`);
+      }
+      console.log(
+        `  persisted across reload: ${after.segments} segment(s), ${after.fixes} fixes; ` +
+          `map segments now ${stats.segments}`,
+      );
+    },
+  },
+  {
     name: 'mobile-journeys',
     center: [-122.4148, 37.7625],
     zoom: 13,

@@ -33,6 +33,17 @@ const ACCURACY_LIMIT_M = 120;
 /** Minimum spacing between stamps; keeps a stationary phone from stacking them. */
 const MIN_STAMP_SPACING_M = 18;
 
+/**
+ * A pause longer than this breaks the trail.
+ *
+ * When a browser suspends the page — screen off, app backgrounded — fixes simply
+ * stop arriving and resume somewhere else entirely. Joining those two points
+ * would draw a straight line across ground the user never crossed, and reveal
+ * territory along it. A break is the honest rendering of "we do not know what
+ * happened in between".
+ */
+const TRAIL_BREAK_MS = 90_000;
+
 export interface LiveDiscovery {
   readonly at: Timestamp;
   readonly coord: LngLat;
@@ -44,10 +55,18 @@ export interface LiveDiscovery {
 
 export interface LiveSessionState {
   readonly stamps: readonly FogStamp[];
+  /** Every point of the walk, in order. */
   readonly trail: readonly LngLat[];
+  /**
+   * The walk split at gaps, for drawing. Each run is a stretch actually
+   * observed; the space between runs is time the app was not receiving fixes.
+   */
+  readonly trailRuns: readonly (readonly LngLat[])[];
   readonly distanceMeters: number;
   readonly discoveredCells: number;
   readonly fixCount: number;
+  /** Total time, in ms, that tracking was suspended mid-walk. */
+  readonly gapMs: number;
 }
 
 function confidenceFor(accuracy: number): number {
@@ -59,6 +78,9 @@ function confidenceFor(accuracy: number): number {
 export class LiveExplorationSession {
   private readonly stamps: FogStamp[] = [];
   private readonly trail: LngLat[] = [];
+  private readonly runs: LngLat[][] = [];
+  private lastFixAt = 0;
+  private gapMs = 0;
   /** Cells explored before this session began — the baseline for "new". */
   private readonly known: Set<string>;
   private readonly discovered = new Set<string>();
@@ -77,11 +99,25 @@ export class LiveExplorationSession {
    */
   addFix(fix: LocationFix): LiveDiscovery | null {
     const confidence = confidenceFor(fix.accuracy);
+    const previous = this.trail[this.trail.length - 1];
+    const sinceLast = this.lastFixAt === 0 ? 0 : fix.at - this.lastFixAt;
+    const broke = sinceLast > TRAIL_BREAK_MS;
+
     // A fix too vague to reveal anything still belongs on the trail: the user
     // was there, we just cannot say precisely where.
-    const previous = this.trail[this.trail.length - 1];
-    if (previous) this.distance += distanceMeters(previous, fix.coord);
+    if (previous && !broke) {
+      this.distance += distanceMeters(previous, fix.coord);
+    } else if (broke) {
+      // Distance across a gap is unknowable, so it is not counted. Claiming the
+      // straight-line distance would inflate the walk with ground never walked.
+      this.gapMs += sinceLast;
+    }
+
+    if (broke || this.runs.length === 0) this.runs.push([]);
+    this.runs[this.runs.length - 1]!.push(fix.coord);
+
     this.trail.push(fix.coord);
+    this.lastFixAt = fix.at;
     this.fixCount++;
 
     if (confidence <= 0) return null;
@@ -113,15 +149,20 @@ export class LiveExplorationSession {
     return {
       stamps: this.stamps,
       trail: this.trail,
+      trailRuns: this.runs,
       distanceMeters: this.distance,
       discoveredCells: this.discovered.size,
       fixCount: this.fixCount,
+      gapMs: this.gapMs,
     };
   }
 
   reset(): void {
     this.stamps.length = 0;
     this.trail.length = 0;
+    this.runs.length = 0;
+    this.lastFixAt = 0;
+    this.gapMs = 0;
     this.discovered.clear();
     this.lastStampAt = null;
     this.distance = 0;

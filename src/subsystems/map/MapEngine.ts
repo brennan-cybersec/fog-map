@@ -168,9 +168,9 @@ export class MapEngine {
   }
 
   /** Draw the path walked during the current live tracking session. */
-  setLiveTrail(trail: readonly LngLat[]): void {
+  setLiveTrail(runs: readonly (readonly LngLat[])[]): void {
     installLiveTrailLayers(this.labels);
-    setLiveTrail(this.labels, trail);
+    setLiveTrail(this.labels, runs);
   }
 
   /** Draw the trail a journey replay has covered so far. */

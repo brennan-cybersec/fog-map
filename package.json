@@ -14,7 +14,10 @@
     "lint": "tsc -b --noEmit",
     "perf": "node tests/verify/perf.mjs",
     "serve": "HTTPS=1 vite preview --port 4173 --host",
-    "dev:https": "HTTPS=1 vite --port 5273 --strictPort --host"
+    "dev:https": "HTTPS=1 vite --port 5273 --strictPort --host",
+    "android:init": "cap add android",
+    "android:sync": "pnpm build && cap sync android",
+    "android:open": "cap open android"
   },
   "dependencies": {
     "h3-js": "^4.5.0",
@@ -29,6 +32,8 @@
     ]
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.1",
+    "@capacitor/core": "^8.5.1",
     "@playwright/test": "^1.50.0",
     "@types/geojson": "^7946.0.16",
     "@types/react": "^19.1.0",

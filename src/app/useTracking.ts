@@ -11,16 +11,28 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { CleanedFix, ExploredCell, LngLat, LocationFix, TrackingStatus } from '../core/types';
+import type {
+  CleanedFix,
+  ExploredCell,
+  LngLat,
+  LocationFix,
+  Segment,
+  TrackingStatus,
+} from '../core/types';
 import { LiveExplorationSession, type LiveDiscovery, type LiveSessionState } from '../subsystems/exploration/liveSession';
-import { LiveGps } from '../subsystems/gps';
+import { LiveGps, type PositionSource } from '../subsystems/gps';
+import { createBackgroundProvider, describeProvider } from '../subsystems/gps/provider';
+import type { WalkRecorder } from '../subsystems/location-history/recorder';
+import type { ProviderCapabilities } from '../subsystems/gps/provider';
 
 const EMPTY_STATE: LiveSessionState = {
   stamps: [],
   trail: [],
+  trailRuns: [],
   distanceMeters: 0,
   discoveredCells: 0,
   fixCount: 0,
+  gapMs: 0,
 };
 
 export interface TrackingState {
@@ -30,6 +42,8 @@ export interface TrackingState {
   session: LiveSessionState;
   /** Most recent discovery, for the announcement. Cleared by `acknowledgeDiscovery`. */
   discovery: LiveDiscovery | null;
+  /** What this build can actually do — foreground only, or true background. */
+  provider: ProviderCapabilities;
   acknowledgeDiscovery: () => void;
   start: () => void;
   stop: () => void;
@@ -45,8 +59,29 @@ export interface TrackingState {
   injectDemoFix: (coord: LngLat, accuracy?: number) => void;
 }
 
-export function useTracking(knownCells: ReadonlyMap<string, ExploredCell>): TrackingState {
-  const gps = useMemo(() => new LiveGps(), []);
+export interface TrackingOptions {
+  /** Persists fixes as they arrive and commits the walk when tracking stops. */
+  readonly recorder?: WalkRecorder;
+  /** Called with the segment a finished walk produced, if it amounted to one. */
+  readonly onWalkCommitted?: (segment: Segment) => void;
+}
+
+export function useTracking(
+  knownCells: ReadonlyMap<string, ExploredCell>,
+  options: TrackingOptions = {},
+): TrackingState {
+  // The native shell supplies a source that keeps running with the screen off;
+  // in a browser there is no such thing, and the UI says so rather than
+  // implying otherwise.
+  const provider = useMemo(() => describeProvider(), []);
+  // Held in refs so a changing callback identity never tears down the GPS
+  // subscription mid-walk.
+  const recorderRef = useRef(options.recorder);
+  recorderRef.current = options.recorder;
+  const onCommittedRef = useRef(options.onWalkCommitted);
+  onCommittedRef.current = options.onWalkCommitted;
+
+  const gps = useMemo<PositionSource>(() => createBackgroundProvider() ?? new LiveGps(), []);
   const gpsRef = useRef(gps);
 
   const [status, setStatus] = useState<TrackingStatus>(() => gps.getStatus());
@@ -75,6 +110,10 @@ export function useTracking(knownCells: ReadonlyMap<string, ExploredCell>): Trac
         }
         setLastExcluded(null);
         setFix(cleaned.fix);
+
+        // Written before anything else touches it. If the browser freezes or
+        // kills the page a moment from now, this reading is already on disk.
+        void recorderRef.current?.record(cleaned.fix);
 
         const active = sessionRef.current;
         if (!active) return;
@@ -136,6 +175,12 @@ export function useTracking(knownCells: ReadonlyMap<string, ExploredCell>): Trac
     // what someone just walked would be a strange reward for the walk.
     sessionRef.current = null;
     setFix(null);
+
+    // Roll the walk into permanent history. A walk too short to count returns
+    // null and simply leaves nothing behind.
+    void recorderRef.current?.commit().then((segment) => {
+      if (segment) onCommittedRef.current?.(segment);
+    });
   }, [releaseWakeLock]);
 
   const toggle = useCallback(() => {
@@ -156,6 +201,10 @@ export function useTracking(knownCells: ReadonlyMap<string, ExploredCell>): Trac
       accuracy,
       source: 'demo',
     };
+    // Goes through the recorder too, so a simulated walk exercises the real
+    // persistence path rather than only the in-memory reveal. The fix keeps
+    // `source: 'demo'`, so what lands on disk stays honestly labelled.
+    void recorderRef.current?.record(synthetic);
     const found = sessionRef.current.addFix(synthetic);
     setFix(synthetic);
     setSession({ ...sessionRef.current.getState() });
@@ -168,6 +217,7 @@ export function useTracking(knownCells: ReadonlyMap<string, ExploredCell>): Trac
     lastExcluded,
     session,
     discovery,
+    provider,
     acknowledgeDiscovery,
     start,
     stop,

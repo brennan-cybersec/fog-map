@@ -943,6 +943,42 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* --- Storage readout ----------------------------------------------------- */
+
+.storage {
+  margin: 0 0 var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.storage__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: 3px 0;
+  font-size: 11.5px;
+}
+
+.storage__row dt {
+  color: var(--text-faint);
+}
+
+.storage__row dd {
+  margin: 0;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
 /* --- Prose, toggles and buttons ------------------------------------------ */
 
 .prose {
@@ -1229,6 +1265,21 @@
 
 .live__stop:hover {
   background: rgba(255, 255, 255, 0.16);
+}
+
+/* Sits above the readout so the limitation is visible before a walk starts,
+   not discovered afterwards when the trail has a hole in it. */
+.live__caveat {
+  margin: 0 0 var(--s-2);
+  text-align: center;
+  font-size: 11px;
+  color: var(--warning);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.live__gap {
+  color: var(--warning);
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- Discovery ----------------------------------------------------------- */

@@ -9,11 +9,26 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
 import { installVerificationApi } from './devtools/verification';
+import { isNativeShell } from './subsystems/gps/provider';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('missing #root');
 
 installVerificationApi();
+
+/**
+ * Inside the native shell, tracking uses the Android foreground service instead
+ * of the browser's geolocation. The import is dynamic so a browser build never
+ * pulls in Capacitor plugin code it cannot use.
+ */
+if (isNativeShell()) {
+  void Promise.all([
+    import('./subsystems/gps/provider'),
+    import('./subsystems/gps/nativeBackground'),
+  ]).then(([provider, native]) => {
+    provider.registerBackgroundProvider(() => new native.NativeBackgroundGps());
+  });
+}
 
 /**
  * Register the service worker so the app is installable on a phone.

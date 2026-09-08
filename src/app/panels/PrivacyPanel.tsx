@@ -15,6 +15,7 @@ import { formatCount } from '../../core/format';
 import type { DemoHistory } from '../../subsystems/demo-data';
 import { exportGeoJson, exportRawJson } from '../../subsystems/storage/export';
 import type { TrackingStatus } from '../../core/types';
+import type { StorageReport } from '../useRecordedHistory';
 
 export interface PrivacyPanelProps {
   history: DemoHistory;
@@ -24,6 +25,8 @@ export interface PrivacyPanelProps {
   onToggleMaskHome: () => void;
   onDeleteAll: () => void;
   deleted: boolean;
+  /** What is actually on disk right now, or null if the browser will not say. */
+  storage: StorageReport | null;
 }
 
 export function PrivacyPanel({
@@ -34,6 +37,7 @@ export function PrivacyPanel({
   onToggleMaskHome,
   onDeleteAll,
   deleted,
+  storage,
 }: PrivacyPanelProps) {
   const [confirming, setConfirming] = useState(false);
 
@@ -68,14 +72,35 @@ export function PrivacyPanel({
         <section className="statblock">
           <h3 className="statblock__title">Where your data lives</h3>
           <p className="prose">
-            Everything you see is held on this device. There is no account, no server and
-            no upload. The only network requests this app makes are for map tiles, which
-            reveal the area you are looking at and nothing about your history.
+            Everything you record is saved on this device, in your browser&rsquo;s
+            IndexedDB storage under <code className="code">terra-incognita</code>. There is
+            no account, no server and no upload. The only network requests this app makes
+            are for map tiles, which reveal the area you are looking at and nothing about
+            your history.
           </p>
+
+          {/* Concrete counts rather than a reassurance: the user asked to be able
+              to see that their data is genuinely being saved. */}
+          {storage && (
+            <dl className="storage">
+              <div className="storage__row">
+                <dt>Recorded points</dt>
+                <dd>{formatCount(storage.fixes)}</dd>
+              </div>
+              <div className="storage__row">
+                <dt>Saved journeys</dt>
+                <dd>{formatCount(storage.segments)}</dd>
+              </div>
+              <div className="storage__row">
+                <dt>On disk</dt>
+                <dd>{storage.bytes === null ? 'not reported' : formatBytes(storage.bytes)}</dd>
+              </div>
+            </dl>
+          )}
+
           <p className="prose prose--note">
-            This build loads a synthetic demo history into memory rather than writing to
-            disk, so clearing it removes it for this session. Real recorded movement would
-            persist locally in your browser&rsquo;s storage.
+            The demo history is generated rather than stored, so it takes up no space. Only
+            movement this device actually recorded is written to disk.
           </p>
         </section>
 
@@ -106,7 +131,8 @@ export function PrivacyPanel({
           {!deleted && (
             <p className="prose prose--note">
               {formatCount(history.fixes.length)} points, {formatCount(history.segments.length)}{' '}
-              movements, {formatCount(history.visits.length)} visits.
+              movements, {formatCount(history.visits.length)} visits — demo history and your
+              own recorded walks together.
             </p>
           )}
         </section>
@@ -121,8 +147,8 @@ export function PrivacyPanel({
           ) : (
             <>
               <p className="prose">
-                Deleting removes every recorded point, the journeys built from them and the
-                territory they revealed. It cannot be undone.
+                Deleting erases the stored history on this device and dismisses the demo
+                world, returning the map to unexplored. It cannot be undone.
               </p>
               {confirming ? (
                 <div className="btnrow">
@@ -166,4 +192,16 @@ function Toggle({
       </span>
     </label>
   );
+}
+
+/**
+ * Storage size, rounded honestly.
+ *
+ * Browsers pad and round their own estimate, so presenting more than one decimal
+ * would imply a precision the number does not have.
+ */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

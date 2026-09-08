@@ -1,7 +1,7 @@
 {
   "product": "Terra Incognita",
-  "version": "1.01.0",
-  "lastVerifiedAt": "2026-09-07T16:45:00Z",
+  "version": "1.02.0",
+  "lastVerifiedAt": "2026-09-08T06:35:00Z",
   "verification": {
     "command": "pnpm verify",
     "renderer": "ANGLE SwiftShader (WebGL2, headless Chromium)",
@@ -23,7 +23,8 @@
       "replay",
       "mobile-map",
       "mobile-tracking",
-      "mobile-journeys"
+      "mobile-journeys",
+      "persistence-reload"
     ],
     "result": "OK",
     "consoleErrors": 0,
@@ -31,8 +32,8 @@
   },
   "tests": {
     "command": "pnpm test",
-    "files": 9,
-    "passing": 93,
+    "files": 10,
+    "passing": 107,
     "failing": 0,
     "typecheck": "clean"
   },
@@ -65,7 +66,8 @@
       "caveat": "Absolute frame rates from this harness are a floor, not a prediction for real hardware. Useful for regression detection, not for asserting the 60 FPS budget."
     },
     "heapGrowthAcrossTwoIdenticalPasses": "0.0 MB",
-    "liveWalkCoverageRevealed": "2,271,204 -> 2,813,962 px (verified end-to-end in a browser)"
+    "liveWalkCoverageRevealed": "2,271,204 -> 2,813,962 px (verified end-to-end in a browser)",
+    "persistenceAcrossReload": "1 segment / 45 fixes survived a full page reload (verified in a browser)"
   },
   "modules": {
     "map": {
@@ -132,7 +134,7 @@
     "gps": {
       "score": 8.0,
       "state": "passing",
-      "notes": "Real geolocation with battery profiles. Every documented fault surfaces distinctly; bad fixes are marked excluded, never deleted. A walk reveals ground in real time and announces genuinely new cells; screen wake lock holds the display on mid-walk."
+      "notes": "Real geolocation with battery profiles. Every documented fault surfaces distinctly; bad fixes are marked excluded, never deleted. A walk reveals ground in real time and announces genuinely new cells; screen wake lock holds the display on mid-walk. A provider abstraction selects an Android foreground-service source inside the native shell; the browser source is foreground-only and the UI states that."
     },
     "permissions": {
       "score": 8.0,
@@ -149,9 +151,9 @@
       ]
     },
     "storage": {
-      "score": 6.0,
-      "state": "partial",
-      "notes": "Lossless GeoJSON and raw JSON export work. IndexedDB persistence is NOT implemented; the demo world lives in memory and the UI says so."
+      "score": 8.5,
+      "state": "passing",
+      "notes": "IndexedDB persistence: fixes written as they arrive, walks committed as segments, interrupted walks recovered on next launch. Lossless export retained. 14 tests."
     },
     "ui": {
       "score": 8.0,
@@ -192,7 +194,12 @@
     "pwa": {
       "score": 7.5,
       "state": "passing",
-      "notes": "Installable: manifest, maskable icons, minimal network-first service worker. Map tiles are deliberately not cached \u2014 a walk would exhaust the storage quota."
+      "notes": "Installable: manifest, maskable icons, minimal network-first service worker. Map tiles are deliberately not cached \u2014 a walk would exhaust the storage quota. Cannot do background location: service workers have no geolocation API (verified empirically)."
+    },
+    "location-history": {
+      "score": 8.0,
+      "state": "passing",
+      "notes": "Turns recorded fixes into segments with inferred mode. Rejects stationary jitter via a bounding-box span guard, not just cumulative path length."
     }
   },
   "openIssues": [
@@ -201,12 +208,6 @@
       "severity": "medium",
       "area": "performance",
       "summary": "The 60 FPS budget is still unverified: the headless harness renders via SwiftShader with no GPU, so it can only detect regressions, not confirm the budget. Needs a run on real hardware."
-    },
-    {
-      "id": "OI-5",
-      "severity": "high",
-      "area": "storage",
-      "summary": "No IndexedDB persistence. Live-tracked fixes are not durable across a reload; only export is implemented."
     },
     {
       "id": "OI-7",
@@ -225,6 +226,18 @@
       "severity": "low",
       "area": "demo-data",
       "summary": "Demo routes interpolate straight lines between hand-placed waypoints, so they do not follow street geometry exactly. Route lines now recede at street zoom where the reveal corridor is the accurate record."
+    },
+    {
+      "id": "OI-9",
+      "severity": "high",
+      "area": "gps",
+      "summary": "Native Android background tracking is written but UNBUILT and UNTESTED: no JDK or Android SDK in the development environment. Needs a real device build to confirm."
+    },
+    {
+      "id": "OI-10",
+      "severity": "low",
+      "area": "storage",
+      "summary": "Recorded walks are not grouped into trips, so each walk is its own journey in the timeline."
     }
   ],
   "resolvedIssues": [
@@ -246,12 +259,15 @@
     "Survey ink was too pale to read; road hierarchy and water were indistinguishable at a glance.",
     "Local errands and weekend routes cut straight diagonals through city blocks.",
     "Route lines dominated street zoom as a starburst of overlapping strokes.",
-    "Vite flipped to HTTPS merely because .certs/ existed, silently breaking the verification harness."
+    "Vite flipped to HTTPS merely because .certs/ existed, silently breaking the verification harness.",
+    "Live-tracked walks were lost on reload; history is now persisted in IndexedDB.",
+    "A suspended page bridged its tracking gap with a straight line; the trail now breaks and reports missed time.",
+    "Deleting history was session-only; deletion now wipes storage and persists the dismissal.",
+    "IndexedDB transaction was awaited mid-flight, which can auto-commit before follow-up writes land."
   ],
   "nextUp": [
-    "Confirm the 60 FPS budget on real GPU hardware.",
-    "IndexedDB persistence so a live walk survives a reload.",
-    "Background tracking while the screen is off (needs a service-worker sync strategy).",
-    "A places surface with favouriting."
+    "Build and test the Android shell on a real device.",
+    "Group consecutive recorded walks into trips.",
+    "Confirm the 60 FPS budget on real GPU hardware."
   ]
 }

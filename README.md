@@ -24,7 +24,7 @@ imagery from Esri World Imagery, both keyless.
 | `pnpm dev` | Run the app in development |
 | `pnpm build` | Production build into `dist/` |
 | `pnpm serve` | Serve the production build on the local network |
-| `pnpm test` | Unit tests (93) |
+| `pnpm test` | Unit tests (107) |
 | `pnpm typecheck` | TypeScript, strict |
 | `pnpm verify` | Screenshot every major view, scrape the console for errors |
 | `pnpm perf` | Measure frame intervals and heap growth |
@@ -57,8 +57,8 @@ once — that is what makes the origin secure — then **Start live tracking**,
 allow location, and walk.
 
 Chrome will offer to install it to the home screen, after which it opens
-full-screen like an app. The screen is held awake while tracking, because a
-phone that sleeps mid-walk resumes with one long straight jump in the trail.
+full-screen like an app. The screen is held awake while tracking — see the next
+section for why that matters and what happens if you lock the phone anyway.
 
 To confirm an address is actually GPS-capable before you set off:
 
@@ -68,6 +68,43 @@ node tests/verify/prodcheck.mjs https://<your-lan-ip>:4173/
 
 It prints `secure context: true` when geolocation will work.
 
+## Background tracking on Android
+
+**A PWA cannot track location with the screen off.** This is a platform limit,
+not a missing feature: `ServiceWorkerGlobalScope` has no `geolocation` (verified
+empirically), and Android freezes a backgrounded page, so there is nowhere for a
+web app to keep listening from. In the browser, tracking runs while the page is
+open and the screen is on, and the UI says so before you start a walk.
+
+Real screen-off tracking needs an Android foreground service. The native shell
+exists for exactly that, and hosts the same web bundle — there is no second
+codebase.
+
+```bash
+pnpm add @capacitor/android @capacitor-community/background-geolocation
+pnpm android:init      # generates android/ (one time)
+pnpm android:sync      # build the web bundle and copy it in
+pnpm android:open      # opens Android Studio to build and run
+```
+
+Then add to `android/app/src/main/AndroidManifest.xml`:
+
+```xml
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+```
+
+Android requires the user to grant background location separately, from system
+settings — "Allow all the time" rather than "Allow while using the app". The app
+detects the native shell at runtime and switches to the background source
+automatically; nothing needs configuring in the web code.
+
+> **Not verified here.** This repository was developed without a JDK or the
+> Android SDK, so the native path is written but unbuilt and untested. The web
+> app, its persistence and its foreground tracking are fully verified.
+
 ## What it does
 
 - **Fog of war** — a WebGL mask erases a survey-map layer to reveal satellite
@@ -75,6 +112,9 @@ It prints `secure context: true` when geolocation will work.
 - **Live tracking** — one button. Real permission-gated GPS reveals territory
   underfoot as you walk, announces genuinely new ground, and holds the screen
   awake. Every failure mode is surfaced by name rather than as a silent stall.
+- **Persistent history** — walks are written to IndexedDB as they happen, so they
+  survive reloads, restarts and a browser that kills the page mid-walk. A walk
+  interrupted by a crash is recovered on the next launch.
 - **Installable** — a phone-first layout with bottom sheets and thumb-reachable
   controls, installable to the home screen as a PWA.
 - **Journeys** — 453 days of history, browsable, with journey replay that runs
@@ -108,11 +148,11 @@ between runs.
 
 These are real and deliberately not hidden:
 
-- **No persistence.** History lives in memory; export works, but a live walk
-  does not survive a reload.
-- **No background tracking.** Territory is revealed while the app is open and
-  the screen is awake. Tracking with the phone in a pocket and the screen off
-  needs a different mechanism than the one here.
+- **Background tracking needs the native build.** In a browser, tracking pauses
+  when the page is backgrounded or the screen locks — see above. A gap is drawn
+  as a break in the trail and reported as "missed" time rather than being
+  bridged with a straight line across ground you never walked. The Android
+  shell that lifts this limit is written but unbuilt here.
 - **Demo routes are approximations.** The synthetic history interpolates between
   hand-placed waypoints, so its lines do not follow street geometry exactly.
   Route lines recede at street zoom, where the reveal corridor is the accurate

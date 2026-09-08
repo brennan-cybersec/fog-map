@@ -9,7 +9,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatArea, formatCount, formatDistance, formatPercent } from '../core/format';
 import type { LngLat, Segment, Trip } from '../core/types';
-import { registerEngine, registerStats, registerWalkSimulator } from '../devtools/verification';
+import {
+  registerEngine,
+  registerStats,
+  registerStorageProbe,
+  registerWalkSimulator,
+} from '../devtools/verification';
 import { generateDemoHistory } from '../subsystems/demo-data';
 import { buildExploration, EARTH_LAND_SQ_METERS } from '../subsystems/exploration';
 import { boundsOf } from '../subsystems/geospatial';
@@ -25,6 +30,7 @@ import { Onboarding } from './panels/Onboarding';
 import { PrivacyPanel } from './panels/PrivacyPanel';
 import { SearchBar } from './panels/SearchBar';
 import { StatisticsPanel } from './panels/StatisticsPanel';
+import { useRecordedHistory } from './useRecordedHistory';
 import { useReplay } from './useReplay';
 import { describeFault, useTracking } from './useTracking';
 
@@ -39,24 +45,50 @@ type PanelId = 'journeys' | 'statistics' | 'privacy' | 'exploration' | null;
 const HOME_MASK_METERS = 300;
 
 export function App() {
-  // Generating eighteen months of history and rebuilding the reveal mask costs
-  // a few hundred milliseconds, so it happens once and never on re-render.
+  const persisted = useRecordedHistory();
+
+  // Generating eighteen months of history costs a few hundred milliseconds, so
+  // the demo world is built once and never on re-render.
+  const demo = useMemo(() => generateDemoHistory({ endAt: DEMO_END_AT }), []);
+
+  /**
+   * The history everything derives from: the demo world plus whatever this
+   * device has actually recorded.
+   *
+   * Rebuilt when a walk is committed — not on every fix. Live movement is drawn
+   * incrementally by the tracking session; folding it into the base mask here
+   * too would recompute the whole exploration model once a second.
+   */
   const world = useMemo(() => {
-    const history = generateDemoHistory({ endAt: DEMO_END_AT });
-    const exploration = buildExploration(history.segments, history.visits);
-    const groundMeters = history.segments
+    const demoSegments = persisted.demoDismissed ? [] : demo.segments;
+    const demoVisits = persisted.demoDismissed ? [] : demo.visits;
+
+    const segments = [...demoSegments, ...persisted.recorded.segments].sort(
+      (a, b) => a.startAt - b.startAt,
+    );
+    const history = {
+      ...demo,
+      segments,
+      visits: demoVisits,
+      fixes: persisted.demoDismissed ? persisted.recorded.fixes : demo.fixes,
+      trips: persisted.demoDismissed ? [] : demo.trips,
+      places: persisted.demoDismissed
+        ? demo.places.map((p) => ({ ...p, visitCount: 0 }))
+        : demo.places,
+    };
+    const exploration = buildExploration(segments, demoVisits);
+    const groundMeters = segments
       .filter((s) => s.mode !== 'flight')
       .reduce((a, s) => a + s.distanceMeters, 0);
-    const flightMeters = history.segments
+    const flightMeters = segments
       .filter((s) => s.mode === 'flight')
       .reduce((a, s) => a + s.distanceMeters, 0);
     return { history, exploration, groundMeters, flightMeters };
-  }, []);
+  }, [demo, persisted.demoDismissed, persisted.recorded]);
 
   const [engine, setEngine] = useState<MapEngine | null>(null);
   const [booted, setBooted] = useState(false);
   const [panel, setPanel] = useState<PanelId>(null);
-  const [deleted, setDeleted] = useState(false);
   const [maskHome, setMaskHome] = useState(false);
   const [following, setFollowing] = useState(true);
   // First run is shown once per browser. A returning user should land straight
@@ -79,7 +111,10 @@ export function App() {
       /* persistence is a convenience here, never a requirement */
     }
   }, []);
-  const tracking = useTracking(world.exploration.cells);
+  const tracking = useTracking(world.exploration.cells, {
+    recorder: persisted.recorder,
+    onWalkCommitted: persisted.addSegment,
+  });
   const replay = useReplay();
   const fault = describeFault(tracking.status);
 
@@ -121,15 +156,22 @@ export function App() {
     registerWalkSimulator((path, accuracy) => {
       for (const coord of path) tracking.injectDemoFix(coord, accuracy);
     });
-  }, [tracking]);
+    registerStorageProbe({
+      commitWalk: async () => {
+        const segment = await persisted.recorder.commit();
+        if (segment) persisted.addSegment(segment);
+      },
+      storageCounts: () => persisted.recorder.storage().counts(),
+    });
+  }, [tracking, persisted]);
 
   useEffect(() => {
     engine?.setReplayTrail(replay.frame?.trail ?? []);
   }, [engine, replay.frame]);
 
   useEffect(() => {
-    engine?.setLiveTrail(tracking.session.trail);
-  }, [engine, tracking.session.trail]);
+    engine?.setLiveTrail(tracking.session.trailRuns);
+  }, [engine, tracking.session.trailRuns]);
 
   // Follow the walker while tracking. Panning the map by hand switches this off
   // so the camera never fights the user for control; the locate button re-arms it.
@@ -213,6 +255,8 @@ export function App() {
    * exploration model, so the underlying derivation stays a pure function of
    * history and the privacy choice is visible in one place.
    */
+  const deleted = persisted.demoDismissed && persisted.recorded.segments.length === 0;
+
   const view = useMemo(() => {
     if (deleted) {
       const empty: typeof world.history = {
@@ -418,7 +462,8 @@ export function App() {
               onToggleTracking={tracking.toggle}
               maskHome={maskHome}
               onToggleMaskHome={() => setMaskHome((m) => !m)}
-              onDeleteAll={() => setDeleted(true)}
+              onDeleteAll={() => void persisted.deleteEverything()}
+              storage={persisted.storage}
               deleted={deleted}
             />
           </Panel>
@@ -469,6 +514,7 @@ export function App() {
           status={tracking.status}
           session={tracking.session}
           accuracyMeters={tracking.fix?.accuracy ?? null}
+          provider={tracking.provider}
           onStart={() => {
             setFollowing(true);
             tracking.start();

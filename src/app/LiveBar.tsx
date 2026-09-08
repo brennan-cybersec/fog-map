@@ -10,19 +10,28 @@
  * it is, and how much new ground has opened up.
  */
 
-import { formatDistance } from '../core/format';
+import { formatDistance, formatDuration } from '../core/format';
 import type { TrackingStatus } from '../core/types';
 import type { LiveSessionState } from '../subsystems/exploration/liveSession';
+import type { ProviderCapabilities } from '../subsystems/gps/provider';
 
 export interface LiveBarProps {
   status: TrackingStatus;
   session: LiveSessionState;
   accuracyMeters: number | null;
+  provider: ProviderCapabilities;
   onStart: () => void;
   onStop: () => void;
 }
 
-export function LiveBar({ status, session, accuracyMeters, onStart, onStop }: LiveBarProps) {
+export function LiveBar({
+  status,
+  session,
+  accuracyMeters,
+  provider,
+  onStart,
+  onStop,
+}: LiveBarProps) {
   if (!status.enabled) {
     return (
       <div className="live">
@@ -40,6 +49,9 @@ export function LiveBar({ status, session, accuracyMeters, onStart, onStop }: Li
 
   return (
     <div className="live">
+      {!provider.background && (
+        <p className="live__caveat">Keep this screen on — locking the phone pauses tracking</p>
+      )}
       <div className="live__panel">
         <span className="live__pulse" aria-hidden="true" />
         <span className="live__readout">
@@ -55,6 +67,13 @@ export function LiveBar({ status, session, accuracyMeters, onStart, onStop }: Li
               </span>
               {accuracyMeters !== null && (
                 <span className="live__accuracy">±{Math.round(accuracyMeters)} m</span>
+              )}
+              {/* A gap means the app was suspended and genuinely saw nothing.
+                  Saying so beats a trail that silently skips a mile. */}
+              {session.gapMs > 0 && (
+                <span className="live__gap" title="Tracking was suspended while the app was in the background">
+                  {formatDuration(session.gapMs)} missed
+                </span>
               )}
             </>
           )}

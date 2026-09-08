@@ -35,6 +35,10 @@ export interface VerificationApi {
    * it goes. Registered by the app; absent until the map is mounted.
    */
   simulateWalk?: (path: [number, number][], accuracy?: number) => void;
+  /** Commit the simulated walk to storage, as pressing Stop would. */
+  commitWalk?: () => Promise<void>;
+  /** What is actually on disk, so the harness can assert persistence. */
+  storageCounts?: () => Promise<{ fixes: number; segments: number }>;
   /** Begin recording frame intervals for a performance assertion. */
   startFrameRecording: () => void;
   /** Stop recording and return real measured frame statistics. */
@@ -74,6 +78,16 @@ export function registerWalkSimulator(
   fn: (path: [number, number][], accuracy?: number) => void,
 ): void {
   if (window.__terra) window.__terra.simulateWalk = fn;
+}
+
+/** Wired by the app so the harness can commit a walk and inspect storage. */
+export function registerStorageProbe(probe: {
+  commitWalk: () => Promise<void>;
+  storageCounts: () => Promise<{ fixes: number; segments: number }>;
+}): void {
+  if (!window.__terra) return;
+  window.__terra.commitWalk = probe.commitWalk;
+  window.__terra.storageCounts = probe.storageCounts;
 }
 
 export function installVerificationApi(): void {
