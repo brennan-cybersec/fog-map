@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Terra Incognita</string>
+    <string name="title_activity_main">Terra Incognita</string>
+    <string name="package_name">lol.unknown.terraincognita</string>
+    <string name="custom_url_scheme">lol.unknown.terraincognita</string>
+</resources>

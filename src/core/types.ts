@@ -46,7 +46,14 @@ export type ExclusionReason =
   | 'accuracy-too-low'
   | 'impossible-speed'
   | 'duplicate'
-  | 'user-hidden';
+  | 'user-hidden'
+  /**
+   * The platform reported the position as produced by a mock location provider
+   * rather than by hardware. The reading is kept — raw records are immutable —
+   * but it is not a measurement of where anyone was, so nothing may be derived
+   * from it. Without this, a mock-location app could fabricate exploration.
+   */
+  | 'simulated';
 
 export interface CleanedFix {
   readonly fix: LocationFix;

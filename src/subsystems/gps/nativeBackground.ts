@@ -17,43 +17,14 @@
  */
 
 import { registerPlugin } from '@capacitor/core';
+// Type-only import: erased at compile time, so the web bundle never resolves the
+// plugin package at runtime even though the types come from it.
+import type {
+  BackgroundGeolocationPlugin,
+  Location as BackgroundLocation,
+} from '@capacitor-community/background-geolocation';
 import type { CleanedFix, LngLat, LocationFix, TrackingStatus } from '../../core/types';
 import type { GpsEvents, PositionSource } from './index';
-
-/**
- * The slice of `@capacitor-community/background-geolocation` this uses.
- *
- * Declared locally rather than imported so the types do not depend on a package
- * the web build never installs.
- */
-interface BackgroundLocation {
-  latitude: number;
-  longitude: number;
-  accuracy: number;
-  altitude?: number | null;
-  speed?: number | null;
-  bearing?: number | null;
-  time?: number | null;
-}
-
-interface WatcherOptions {
-  backgroundMessage: string;
-  backgroundTitle: string;
-  requestPermissions: boolean;
-  /** Whether to deliver a cached last-known position immediately. */
-  stale: boolean;
-  /** Metres of movement before another reading is delivered. */
-  distanceFilter: number;
-}
-
-interface BackgroundGeolocationPlugin {
-  addWatcher(
-    options: WatcherOptions,
-    callback: (position?: BackgroundLocation, error?: { code: string; message: string }) => void,
-  ): Promise<string>;
-  removeWatcher(options: { id: string }): Promise<void>;
-  openSettings(): Promise<void>;
-}
 
 const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>('BackgroundGeolocation');
 
@@ -112,11 +83,14 @@ export class NativeBackgroundGps implements PositionSource {
             // The plugin reports a denied background permission distinctly from
             // a transient failure, and the two need different responses from
             // the user, so they are not collapsed together.
+            // `code` is optional on the plugin's error type, so a missing code
+            // must fall through to the generic fault rather than being compared
+            // against and silently treated as "not a denial".
+            const denied = error.code === 'NOT_AUTHORIZED';
             this.setStatus({
               enabled: false,
-              permission: error.code === 'NOT_AUTHORIZED' ? 'denied' : this.status.permission,
-              fault:
-                error.code === 'NOT_AUTHORIZED' ? 'permission-denied' : 'position-unavailable',
+              permission: denied ? 'denied' : this.status.permission,
+              fault: denied ? 'permission-denied' : 'position-unavailable',
             });
             return;
           }
@@ -146,10 +120,19 @@ export class NativeBackgroundGps implements PositionSource {
       source: 'device',
     };
 
+    // Android permits mock location providers, and the plugin tells us when one
+    // produced this reading. A simulated position is not a measurement of where
+    // anyone was, so it is recorded but excluded from everything derived —
+    // otherwise a mock-location app could fabricate explored territory.
+    //
     // Background readings arrive minutes apart when someone is stationary, so
     // the speed-based sanity check the foreground source uses would reject
-    // perfectly good fixes. Accuracy is still the honest guard.
-    const excluded: CleanedFix['excluded'] = fix.accuracy > 200 ? 'accuracy-too-low' : null;
+    // perfectly good fixes. Accuracy is the honest guard here.
+    const excluded: CleanedFix['excluded'] = position.simulated
+      ? 'simulated'
+      : fix.accuracy > 200
+        ? 'accuracy-too-low'
+        : null;
 
     this.setStatus({ lastFixAt: fix.at, fault: null });
     for (const l of this.listeners) l.onFix?.({ fix, excluded });

@@ -80,30 +80,31 @@ Real screen-off tracking needs an Android foreground service. The native shell
 exists for exactly that, and hosts the same web bundle — there is no second
 codebase.
 
+The dependencies and the `android/` project are already in this repository, so:
+
 ```bash
-pnpm add @capacitor/android @capacitor-community/background-geolocation
-pnpm android:init      # generates android/ (one time)
-pnpm android:sync      # build the web bundle and copy it in
+pnpm android:sync      # build the web bundle and copy it into android/
 pnpm android:open      # opens Android Studio to build and run
 ```
 
-Then add to `android/app/src/main/AndroidManifest.xml`:
+**No manifest editing is needed.** The plugin declares its own foreground
+service and permissions — `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`,
+`FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION`, `POST_NOTIFICATIONS` — and
+Gradle merges them into the app manifest at build time.
 
-```xml
-<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
-```
+`ACCESS_BACKGROUND_LOCATION` is deliberately **not** requested. A foreground
+service with a visible notification is what keeps location alive here, and that
+does not need the background-location permission — which would mean an extra
+prompt, the "Allow all the time" settings trip, and Play Store policy review,
+for no added capability.
 
-Android requires the user to grant background location separately, from system
-settings — "Allow all the time" rather than "Allow while using the app". The app
-detects the native shell at runtime and switches to the background source
-automatically; nothing needs configuring in the web code.
+The app detects the native shell at runtime and switches to the background
+source automatically; nothing needs configuring in the web code.
 
-> **Not verified here.** This repository was developed without a JDK or the
-> Android SDK, so the native path is written but unbuilt and untested. The web
-> app, its persistence and its foreground tracking are fully verified.
+> **Not verified here.** This machine has no JDK, Android SDK or Android Studio,
+> so the project generates and syncs but has never been compiled or run. Treat
+> the native path as unproven until it runs on a device. The web app, its
+> persistence and its foreground tracking are fully verified.
 
 ## What it does
 
